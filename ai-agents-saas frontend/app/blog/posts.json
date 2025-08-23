@@ -1,0 +1,24 @@
+[
+  {
+    "id": 1,
+    "slug": "how-ai-is-transforming-marketing",
+    "title": "How AI is Transforming Digital Marketing",
+    "date": "2025-07-01",
+    "summary": "AI-driven tools are revolutionizing the way marketers approach campaigns, analytics, and customer engagement.",
+    "content": "<p>AI-driven tools are revolutionizing the way marketers approach campaigns, analytics, and customer engagement. From content generation to predictive analytics, AI is making marketing smarter and more efficient than ever before.</p><p>In this article, we explore the top trends and real-world examples of AI in marketing.</p>",
+    "author": "Amit Sharma",
+    "image": "https://images.unsplash.com/photo-1461749280684-dccba630e2f6?auto=format&fit=crop&w=600&q=80",
+    "tags": ["AI", "Marketing", "Trends"]
+  },
+  {
+    "id": 2,
+    "slug": "getting-started-with-ai-marketing-agents",
+    "title": "Getting Started with AI Marketing Agents",
+    "date": "2025-07-10",
+    "summary": "Learn how to make the most of our platform, from onboarding to advanced features.",
+    "content": "<p>Our platform is designed to be intuitive and powerful. In this guide, we walk you through the basics of setting up your account, exploring AI tools, and maximizing your results.</p>",
+    "author": "Priya Patel",
+    "image": "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=600&q=80",
+    "tags": ["Getting Started", "Platform"]
+  }
+] 
