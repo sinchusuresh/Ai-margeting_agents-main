@@ -23,6 +23,8 @@ import {
   Eye,
   TrendingUp,
   Hash,
+  FileText,
+  Share2,
 } from "lucide-react"
 import { useUserStore } from "@/lib/user-store"
 
@@ -37,17 +39,67 @@ interface ReelScript {
 }
 
 interface ReelsResult {
-  scripts: ReelScript[]
-  hooks: {
+  // New backend structure
+  scriptVariations?: {
+    hook: string
+    mainContent: string
+    callToAction: string
+    visualCues: string[]
+    audioNotes: string[]
+  }[]
+  platformSpecific?: {
+    instagramReels?: {
+      script: string
+      hashtags: string[]
+      trendingSounds: string[]
+      engagementTips: string[]
+    }
+    tiktok?: {
+      script: string
+      hashtags: string[]
+      trendingSounds: string[]
+      engagementTips: string[]
+    }
+    youtubeShorts?: {
+      script: string
+      hashtags: string[]
+      engagementTips: string[]
+    }
+  }
+  visualElements?: {
+    transitions: string[]
+    effects: string[]
+    textOverlays: string[]
+  }
+  audioGuidance?: {
+    backgroundMusic: string
+    voiceoverStyle: string
+    soundEffects: string[]
+  }
+  optimization?: {
+    titleSuggestions: string[]
+    descriptionTemplates: string[]
+    thumbnailIdeas: string[]
+  }
+  exportOptions?: {
+    pdfReady: boolean
+    copyableText: string
+    descriptCompatible: string
+    canvaTemplate: string
+  }
+  
+  // Old frontend structure (for backward compatibility)
+  scripts?: ReelScript[]
+  hooks?: {
     category: string
     examples: string[]
   }[]
-  trends: {
+  trends?: {
     trending: string[]
     sounds: string[]
     effects: string[]
   }
-  optimization: {
+  optimization?: {
     bestTimes: string[]
     captionTips: string[]
     engagementTactics: string[]
@@ -157,6 +209,142 @@ export default function ReelsScriptsPage() {
       setIsGenerating(false)
     }
   }
+
+  const generatePDFContent = (result: ReelsResult, formData: any) => {
+    // Handle both old and new data structures
+    const hasNewStructure = result?.scriptVariations && result?.platformSpecific;
+    const hasOldStructure = result?.scripts && result?.trends;
+    
+    let pdfContent = `
+REELS/SHORTS SCRIPTWRITER AGENT
+Generated on: ${new Date().toLocaleDateString()}
+Topic: ${formData.topic}
+Target Audience: ${formData.targetAudience}
+Duration: ${formData.duration}
+Style: ${formData.tone}
+
+`;
+
+    if (hasNewStructure) {
+      // New backend structure
+      pdfContent += `SCRIPT VARIATIONS
+================
+${result.scriptVariations?.map((script, index) => `
+SCRIPT VARIATION ${index + 1}
+===============================================
+
+HOOK: ${script.hook || 'N/A'}
+
+MAIN CONTENT: ${script.mainContent || 'N/A'}
+
+CALL TO ACTION: ${script.callToAction || 'N/A'}
+
+VISUAL CUES: ${script.visualCues?.join(', ') || 'N/A'}
+AUDIO NOTES: ${script.audioNotes?.join(', ') || 'N/A'}
+
+`).join('\n') || 'No script variations available'}
+
+PLATFORM SPECIFIC CONTENT
+========================
+${result.platformSpecific ? Object.entries(result.platformSpecific).map(([platform, data]: [string, any]) => `
+${platform.toUpperCase()}:
+- Script: ${data.script || 'N/A'}
+- Hashtags: ${data.hashtags?.join(', ') || 'N/A'}
+- Trending Sounds: ${data.trendingSounds?.join(', ') || 'N/A'}
+- Engagement Tips: ${data.engagementTips?.join(', ') || 'N/A'}
+`).join('\n') : 'No platform-specific content available'}
+
+VISUAL ELEMENTS
+==============
+Transitions: ${result.visualElements?.transitions?.join(', ') || 'N/A'}
+Effects: ${result.visualElements?.effects?.join(', ') || 'N/A'}
+Text Overlays: ${result.visualElements?.textOverlays?.join(', ') || 'N/A'}
+
+AUDIO GUIDANCE
+==============
+Background Music: ${result.audioGuidance?.backgroundMusic || 'N/A'}
+Voiceover Style: ${result.audioGuidance?.voiceoverStyle || 'N/A'}
+Sound Effects: ${result.soundEffects?.join(', ') || 'N/A'}
+
+OPTIMIZATION
+===========
+Title Suggestions: ${result.optimization?.titleSuggestions?.join(', ') || 'N/A'}
+Description Templates: ${result.optimization?.descriptionTemplates?.join(', ') || 'N/A'}
+Thumbnail Ideas: ${result.optimization?.thumbnailIdeas?.join(', ') || 'N/A'}
+
+EXPORT OPTIONS
+==============
+${result.exportOptions ? `
+Copyable Text: ${result.exportOptions.copyableText || 'N/A'}
+
+Descript Compatible: ${result.exportOptions.descriptCompatible || 'N/A'}
+
+Canva Template: ${result.exportOptions.canvaTemplate || 'N/A'}
+` : 'No export options available'}
+
+`;
+
+    } else if (hasOldStructure) {
+      // Old frontend structure
+      pdfContent += `${result.scripts?.map((script, index) => `
+SCRIPT VARIATION ${index + 1} - ${script.platform}
+===============================================
+
+HOOK: ${script.hook}
+
+CONTENT: ${script.content}
+
+CALL TO ACTION: ${script.cta}
+
+HASHTAGS: ${script.hashtags?.join(', ')}
+DURATION: ${script.duration}
+EXPECTED ENGAGEMENT: ${script.engagement}
+
+`).join('\n') || 'No scripts available'}
+
+TRENDING ELEMENTS
+================
+Trending Topics: ${result.trends?.trending?.join(', ') || 'N/A'}
+Trending Sounds: ${result.trends?.sounds?.join(', ') || 'N/A'}
+Trending Effects: ${result.trends?.effects?.join(', ') || 'N/A'}
+
+OPTIMIZATION TIPS
+================
+Best Posting Times: ${result.optimization?.bestTimes?.join(', ') || 'N/A'}
+Caption Tips: ${result.optimization?.captionTips?.join(', ') || 'N/A'}
+Engagement Tactics: ${result.optimization?.engagementTactics?.join(', ') || 'N/A'}
+
+`;
+
+    } else {
+      // Fallback for unknown structure
+      pdfContent += `No script data available in the expected format.
+
+Available data structure:
+${JSON.stringify(result, null, 2)}
+
+`;
+    }
+
+    pdfContent += `Generated by AI Marketing Agents - Reels/Shorts Scriptwriter`;
+    
+    return pdfContent;
+  };
+
+  const exportToPDF = () => {
+    if (!result) return;
+    
+    const pdfContent = generatePDFContent(result, formData);
+    const blob = new Blob([pdfContent], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `reels-script-${formData.topic}-${new Date().toISOString().split('T')[0]}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
 
   const generateComprehensiveReelsData = (formData: any) => {
     const { topic, targetAudience, niche, contentType, duration, goal, tone } = formData
@@ -740,8 +928,88 @@ export default function ReelsScriptsPage() {
               <div className="space-y-6">
                 {/* Generated Scripts */}
                 <div className="space-y-4">
+                  {/* New Backend Structure */}
+                  {result?.scriptVariations?.map((script, index) => (
+                    <Card key={`new-${index}`}>
+                      <CardHeader>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <Badge className="bg-purple-100 text-purple-800">Script Variation {index + 1}</Badge>
+                            <Badge variant="outline" className="flex items-center gap-1">
+                              <Clock className="w-3 h-3" />
+                              {formData.duration || '30s'}
+                            </Badge>
+                            <Badge className="bg-green-100 text-green-800">High Engagement</Badge>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => copyToClipboard(script.mainContent, `script-new-${index}`)}
+                          >
+                            {copied[`script-new-${index}`] ? (
+                              <CheckCircle className="w-4 h-4" />
+                            ) : (
+                              <Copy className="w-4 h-4" />
+                            )}
+                          </Button>
+                        </div>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-4">
+                          <div>
+                            <h4 className="font-medium text-gray-900 mb-2">Hook:</h4>
+                            <div className="bg-yellow-50 p-3 rounded-lg">
+                              <p className="font-medium text-yellow-900">{script?.hook || 'No hook available'}</p>
+                            </div>
+                          </div>
+
+                          <div>
+                            <h4 className="font-medium text-gray-900 mb-2">Main Content:</h4>
+                            <div className="bg-gray-50 p-4 rounded-lg max-h-64 overflow-y-auto">
+                              <pre className="whitespace-pre-wrap text-sm text-gray-700 font-sans">
+                                {script?.mainContent || 'No content available'}
+                              </pre>
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                              <h4 className="font-medium text-gray-900 mb-2">Call to Action:</h4>
+                              <div className="bg-blue-50 p-3 rounded-lg">
+                                <p className="text-blue-800 text-sm">{script?.callToAction || 'No CTA available'}</p>
+                              </div>
+                            </div>
+
+                            <div>
+                              <h4 className="font-medium text-gray-900 mb-2">Visual Cues:</h4>
+                              <div className="flex flex-wrap gap-1">
+                                {script?.visualCues?.map((cue, hIndex) => (
+                                  <Badge key={hIndex} variant="secondary" className="text-xs">
+                                    {cue}
+                                  </Badge>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div>
+                            <h4 className="font-medium text-gray-900 mb-2">Audio Notes:</h4>
+                            <div className="flex flex-wrap gap-1">
+                              {script?.audioNotes?.map((note, nIndex) => (
+                                <Badge key={nIndex} variant="outline" className="text-xs">
+                                  {note}
+                                </Badge>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+
+                  {/* Old Frontend Structure (for backward compatibility) */}
                   {result?.scripts?.map((script, index) => (
-                    <Card key={index}>
+                    <Card key={`old-${index}`}>
                       <CardHeader>
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
@@ -755,9 +1023,9 @@ export default function ReelsScriptsPage() {
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => copyToClipboard(script.content, `script-${index}`)}
+                            onClick={() => copyToClipboard(script.content, `script-old-${index}`)}
                           >
-                            {copied[`script-${index}`] ? (
+                            {copied[`script-old-${index}`] ? (
                               <CheckCircle className="w-4 h-4" />
                             ) : (
                               <Copy className="w-4 h-4" />
@@ -806,93 +1074,223 @@ export default function ReelsScriptsPage() {
                       </CardContent>
                     </Card>
                   ))}
+
+                  {/* Show message if no scripts available */}
+                  {!result?.scriptVariations && !result?.scripts && (
+                    <Card>
+                      <CardContent className="p-6 text-center">
+                        <p className="text-gray-500">No scripts generated yet. Please generate scripts first.</p>
+                      </CardContent>
+                    </Card>
+                  )}
                 </div>
 
-                {/* Hook Ideas */}
+                {/* Hook Ideas & Platform Specific Content */}
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <Eye className="w-5 h-5 text-orange-500" />
-                      Hook Ideas Library
+                      Hook Ideas & Platform Content
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      {result?.hooks?.map((hookCategory, index) => (
-                        <div key={index}>
-                          <h4 className="font-medium text-gray-900 mb-3">{hookCategory.category}</h4>
-                          <div className="space-y-2">
-                            {hookCategory.examples.map((hook, hIndex) => (
-                              <div key={hIndex} className="flex items-center justify-between p-2 bg-gray-50 rounded">
-                                <span className="text-sm">{hook}</span>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => copyToClipboard(hook, `hook-${index}-${hIndex}`)}
-                                >
-                                  {copied[`hook-${index}-${hIndex}`] ? (
-                                    <CheckCircle className="w-3 h-3" />
-                                  ) : (
-                                    <Copy className="w-3 h-3" />
+                    <div className="space-y-6">
+                      {/* New Backend Structure - Platform Specific Content */}
+                      {result?.platformSpecific && (
+                        <div>
+                          <h4 className="font-medium text-gray-900 mb-3">Platform-Specific Scripts:</h4>
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            {Object.entries(result.platformSpecific).map(([platform, data]: [string, any]) => (
+                              <div key={platform} className="border rounded-lg p-3">
+                                <h5 className="font-medium text-gray-800 mb-2 capitalize">{platform.replace(/([A-Z])/g, ' $1').trim()}</h5>
+                                <div className="space-y-2 text-sm">
+                                  <div>
+                                    <strong>Script:</strong>
+                                    <p className="text-gray-600 mt-1">{data.script || 'No script available'}</p>
+                                  </div>
+                                  <div>
+                                    <strong>Hashtags:</strong>
+                                    <div className="flex flex-wrap gap-1 mt-1">
+                                      {data.hashtags?.map((tag: string, index: number) => (
+                                        <Badge key={index} variant="secondary" className="text-xs">
+                                          {tag}
+                                        </Badge>
+                                      )) || <span className="text-gray-400">No hashtags</span>}
+                                    </div>
+                                  </div>
+                                  {data.trendingSounds && (
+                                    <div>
+                                      <strong>Trending Sounds:</strong>
+                                      <div className="flex flex-wrap gap-1 mt-1">
+                                        {data.trendingSounds.map((sound: string, index: number) => (
+                                          <Badge key={index} variant="outline" className="text-xs">
+                                            {sound}
+                                          </Badge>
+                                        ))}
+                                      </div>
+                                    </div>
                                   )}
-                                </Button>
+                                  <div>
+                                    <strong>Engagement Tips:</strong>
+                                    <ul className="text-gray-600 mt-1">
+                                      {data.engagementTips?.map((tip: string, index: number) => (
+                                        <li key={index} className="text-xs">• {tip}</li>
+                                      )) || <li className="text-xs text-gray-400">No tips available</li>}
+                                    </ul>
+                                  </div>
+                                </div>
                               </div>
                             ))}
                           </div>
                         </div>
-                      ))}
+                      )}
+
+                      {/* Old Frontend Structure (for backward compatibility) */}
+                      {result?.hooks && (
+                        <div>
+                          <h4 className="font-medium text-gray-900 mb-3">Hook Ideas Library:</h4>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            {result.hooks.map((hookCategory, index) => (
+                              <div key={index}>
+                                <h4 className="font-medium text-gray-900 mb-3">{hookCategory.category}</h4>
+                                <div className="space-y-2">
+                                  {hookCategory.examples.map((hook, hIndex) => (
+                                    <div key={hIndex} className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                                      <span className="text-sm">{hook}</span>
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => copyToClipboard(hook, `hook-${index}-${hIndex}`)}
+                                      >
+                                        {copied[`hook-${index}-${hIndex}`] ? (
+                                          <CheckCircle className="w-3 h-3" />
+                                        ) : (
+                                          <Copy className="w-3 h-3" />
+                                        )}
+                                      </Button>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Show message if no data available */}
+                      {!result?.platformSpecific && !result?.hooks && (
+                        <div className="text-center text-gray-500">
+                          <p>No hook ideas or platform content available yet.</p>
+                        </div>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
 
-                {/* Trending Elements */}
+                {/* Trending Elements & Visual Elements */}
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <TrendingUp className="w-5 h-5 text-pink-500" />
-                      Current Trends & Elements
+                      Current Trends & Visual Elements
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      {/* New Backend Structure */}
                       <div>
-                        <h4 className="font-medium text-gray-900 mb-3">Trending Content Types:</h4>
+                        <h4 className="font-medium text-gray-900 mb-3">Visual Elements:</h4>
+                        <div className="space-y-2">
+                          <div>
+                            <h5 className="text-sm font-medium text-gray-700 mb-1">Transitions:</h5>
+                            <ul className="space-y-1">
+                              {result?.visualElements?.transitions?.map((transition, index) => (
+                                <li key={index} className="text-sm text-gray-600 flex items-center gap-2">
+                                  <Video className="w-4 h-4 text-purple-500" />
+                                  {transition}
+                                </li>
+                              )) || <li className="text-sm text-gray-400">No transitions available</li>}
+                            </ul>
+                          </div>
+                          <div>
+                            <h5 className="text-sm font-medium text-gray-700 mb-1">Effects:</h5>
+                            <ul className="space-y-1">
+                              {result?.visualElements?.effects?.map((effect, index) => (
+                                <li key={index} className="text-sm text-gray-600 flex items-center gap-2">
+                                  <Video className="w-4 h-4 text-purple-500" />
+                                  {effect}
+                                </li>
+                              )) || <li className="text-sm text-gray-400">No effects available</li>}
+                            </ul>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div>
+                        <h4 className="font-medium text-gray-900 mb-3">Audio Guidance:</h4>
+                        <div className="space-y-2">
+                          <div>
+                            <h5 className="text-sm font-medium text-gray-700 mb-1">Background Music:</h5>
+                            <p className="text-sm text-gray-600">{result?.audioGuidance?.backgroundMusic || 'No music guidance available'}</p>
+                          </div>
+                          <div>
+                            <h5 className="text-sm font-medium text-gray-700 mb-1">Voiceover Style:</h5>
+                            <p className="text-sm text-gray-600">{result?.audioGuidance?.voiceoverStyle || 'No voiceover guidance available'}</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Old Frontend Structure (for backward compatibility) */}
+                      <div>
+                        <h4 className="font-medium text-gray-900 mb-3">Trending Topics:</h4>
                         <ul className="space-y-1">
                           {result?.trends?.trending?.map((trend, index) => (
                             <li key={index} className="text-sm text-gray-600 flex items-center gap-2">
                               <TrendingUp className="w-4 h-4 text-pink-500" />
                               {trend}
                             </li>
-                          ))}
-                        </ul>
-                      </div>
-
-                      <div>
-                        <h4 className="font-medium text-gray-900 mb-3">Popular Sounds:</h4>
-                        <ul className="space-y-1">
-                          {result?.trends?.sounds?.map((sound, index) => (
-                            <li key={index} className="text-sm text-gray-600 flex items-center gap-2">
-                              <Hash className="w-4 h-4 text-blue-500" />
-                              {sound}
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-
-                      <div>
-                        <h4 className="font-medium text-gray-900 mb-3">Visual Effects:</h4>
-                        <ul className="space-y-1">
-                          {result?.trends?.effects?.map((effect, index) => (
-                            <li key={index} className="text-sm text-gray-600 flex items-center gap-2">
-                              <Video className="w-4 h-4 text-purple-500" />
-                              {effect}
-                            </li>
-                          ))}
+                          )) || <li className="text-sm text-gray-400">No trending topics available</li>}
                         </ul>
                       </div>
                     </div>
                   </CardContent>
                 </Card>
+
+                {/* Export & Integration Options */}
+                {result?.exportOptions && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Share2 className="w-5 h-5 text-blue-500" />
+                        Export & Platform Integration
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <h4 className="font-medium text-gray-900 mb-2">📱 Descript Integration:</h4>
+                          <div className="text-sm text-gray-600 bg-blue-50 p-3 rounded">
+                            <pre className="whitespace-pre-wrap">{result.exportOptions.descriptCompatible}</pre>
+                          </div>
+                        </div>
+                        
+                        <div>
+                          <h4 className="font-medium text-gray-900 mb-2">🎨 Canva Template:</h4>
+                          <div className="text-sm text-gray-600 bg-green-50 p-3 rounded">
+                            <pre className="whitespace-pre-wrap">{result.exportOptions.canvaTemplate}</pre>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div>
+                        <h4 className="font-medium text-gray-900 mb-2">📄 Copyable Text:</h4>
+                        <div className="text-sm text-gray-600 bg-gray-50 p-3 rounded">
+                          <pre className="whitespace-pre-wrap">{result.exportOptions.copyableText}</pre>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
 
                 {/* Optimization Tips */}
                 <Card>
@@ -903,47 +1301,93 @@ export default function ReelsScriptsPage() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    <div>
-                      <h4 className="font-medium text-gray-900 mb-2">Best Posting Times:</h4>
-                      <div className="space-y-1">
-                        {result?.optimization?.bestTimes?.map((time, index) => (
-                          <div key={index} className="text-sm text-gray-600 bg-blue-50 p-2 rounded">
-                            {time}
-                          </div>
-                        ))}
+                    {/* New Backend Structure */}
+                    {result?.optimization?.titleSuggestions && (
+                      <div>
+                        <h4 className="font-medium text-gray-900 mb-2">Title Suggestions:</h4>
+                        <div className="space-y-1">
+                          {result.optimization.titleSuggestions.map((title, index) => (
+                            <div key={index} className="text-sm text-gray-600 bg-blue-50 p-2 rounded">
+                              {title}
+                            </div>
+                          ))}
+                        </div>
                       </div>
-                    </div>
+                    )}
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <h4 className="font-medium text-gray-900 mb-2">Caption Tips:</h4>
-                        <ul className="space-y-1">
-                          {result?.optimization?.captionTips?.map((tip, index) => (
-                            <li key={index} className="text-sm text-gray-600 flex items-start gap-2">
-                              <CheckCircle className="w-4 h-4 text-green-500 mt-0.5" />
-                              {tip}
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
+                      {/* New Backend Structure */}
+                      {result?.optimization?.descriptionTemplates && (
+                        <div>
+                          <h4 className="font-medium text-gray-900 mb-2">Description Templates:</h4>
+                          <ul className="space-y-1">
+                            {result.optimization.descriptionTemplates.map((template, index) => (
+                              <li key={index} className="text-sm text-gray-600 flex items-start gap-2">
+                                <CheckCircle className="w-4 h-4 text-green-500 mt-0.5" />
+                                {template}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
 
-                      <div>
-                        <h4 className="font-medium text-gray-900 mb-2">Engagement Tactics:</h4>
-                        <ul className="space-y-1">
-                          {result?.optimization?.engagementTactics?.map((tactic, index) => (
-                            <li key={index} className="text-sm text-gray-600 flex items-start gap-2">
-                              <CheckCircle className="w-4 h-4 text-blue-500 mt-0.5" />
-                              {tactic}
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
+                      {/* New Backend Structure */}
+                      {result?.optimization?.thumbnailIdeas && (
+                        <div>
+                          <h4 className="font-medium text-gray-900 mb-2">Thumbnail Ideas:</h4>
+                          <ul className="space-y-1">
+                            {result.optimization.thumbnailIdeas.map((idea, index) => (
+                              <li key={index} className="text-sm text-gray-600 flex items-start gap-2">
+                                <CheckCircle className="w-4 h-4 text-blue-500 mt-0.5" />
+                                {idea}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+
+                      {/* Old Frontend Structure (for backward compatibility) */}
+                      {result?.optimization?.bestTimes && (
+                        <div>
+                          <h4 className="font-medium text-gray-900 mb-2">Best Posting Times:</h4>
+                          <ul className="space-y-1">
+                            {result.optimization.bestTimes.map((time, index) => (
+                              <li key={index} className="text-sm text-gray-600 flex items-start gap-2">
+                                <CheckCircle className="w-4 h-4 text-green-500 mt-0.5" />
+                                {time}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+
+                      {/* Old Frontend Structure (for backward compatibility) */}
+                      {result?.optimization?.captionTips && (
+                        <div>
+                          <h4 className="font-medium text-gray-900 mb-2">Caption Tips:</h4>
+                          <ul className="space-y-1">
+                            {result.optimization.captionTips.map((tip, index) => (
+                              <li key={index} className="text-sm text-gray-600 flex items-start gap-2">
+                                <CheckCircle className="w-4 h-4 text-green-500 mt-0.5" />
+                                {tip}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
                     </div>
+
+                    {/* Show message if no optimization data available */}
+                    {!result?.optimization?.titleSuggestions && !result?.optimization?.bestTimes && (
+                      <div className="text-center text-gray-500">
+                        <p>No optimization data available yet.</p>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
 
                 {/* Action Buttons */}
-                <div className="flex gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <Button
                     variant="outline"
                     onClick={() => copyToClipboard(JSON.stringify(result, null, 2), "all-scripts")}
@@ -956,6 +1400,17 @@ export default function ReelsScriptsPage() {
                     )}
                     {copied["all-scripts"] ? "Copied!" : "Copy All Scripts"}
                   </Button>
+                  
+                  <Button 
+                    variant="outline" 
+                    className="flex-1 bg-transparent"
+                    onClick={exportToPDF}
+                    disabled={!result}
+                  >
+                    <FileText className="w-4 h-4 mr-2" />
+                    Export as PDF
+                  </Button>
+                  
                   <Button 
                     variant="outline" 
                     className="flex-1 bg-transparent"
@@ -974,3 +1429,4 @@ export default function ReelsScriptsPage() {
     </div>
   )
 }
+

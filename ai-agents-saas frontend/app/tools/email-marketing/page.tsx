@@ -30,6 +30,7 @@ import { makeAuthenticatedRequest } from "@/lib/auth-utils"
 interface EmailCampaign {
   type: string
   subject: string
+  subjectVariations?: string[]
   preheader: string
   content: string
   cta: string
@@ -55,6 +56,7 @@ interface EmailResult {
   }
   optimization: {
     subjectLineVariations: string[]
+    abTestingIdeas: string[]
     segmentationTips: string[]
     testingRecommendations: string[]
   }
@@ -499,6 +501,216 @@ P.S. This pricing won't be available again this year, so if you've been waiting 
     }
   }
 
+  // Platform-specific export functions
+  const exportToMailchimp = (result: EmailResult) => {
+    if (!result || !result.campaigns) {
+      alert("No campaigns to export!");
+      return;
+    }
+
+    try {
+      // Generate Mailchimp-compatible HTML
+      const mailchimpHtml = result.campaigns.map(campaign => `
+        <div class="mcnTextBlock" style="margin-bottom: 20px;">
+          <table border="0" cellpadding="0" cellspacing="0" width="100%" class="mcnTextBlockOuter">
+            <tr>
+              <td valign="top" class="mcnTextBlockInner">
+                <table align="left" border="0" cellpadding="0" cellspacing="0" width="100%" class="mcnTextContentContainer">
+                  <tr>
+                    <td valign="top" class="mcnTextContent" style="padding: 20px;">
+                      <h2 style="color: #333; margin-bottom: 15px;">${campaign.type}</h2>
+                      <p><strong>Subject:</strong> ${campaign.subject}</p>
+                      ${campaign.subjectVariations && campaign.subjectVariations.length > 0 ? `
+                      <p><strong>Subject Variations:</strong></p>
+                      <ul>
+                        ${campaign.subjectVariations.map(variation => `<li>${variation}</li>`).join('')}
+                      </ul>
+                      ` : ''}
+                      <p><strong>Preheader:</strong> ${campaign.preheader}</p>
+                      <div style="background: #f9f9f9; padding: 15px; border-radius: 5px;">
+                        ${campaign.content}
+                      </div>
+                      <p><strong>CTA:</strong> ${campaign.cta}</p>
+                      <p><strong>Personalizations:</strong> ${campaign.personalizations.join(", ")}</p>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+          </table>
+        </div>
+      `).join('');
+
+      const fullMailchimpHtml = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>Mailchimp Email Campaigns</title>
+          <meta charset="utf-8">
+        </head>
+        <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          ${mailchimpHtml}
+        </body>
+        </html>
+      `;
+
+      const blob = new Blob([fullMailchimpHtml], { type: "text/html" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", "mailchimp-campaigns.html");
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      alert("Mailchimp export successful! Import the HTML file into your Mailchimp account.");
+    } catch (error) {
+      console.error("Mailchimp export error:", error);
+      alert("Mailchimp export failed. Please try again.");
+    }
+  };
+
+  const exportToConvertKit = (result: EmailResult) => {
+    if (!result || !result.campaigns) {
+      alert("No campaigns to export!");
+      return;
+    }
+
+    try {
+      // Generate ConvertKit-compatible HTML
+      const convertkitHtml = result.campaigns.map(campaign => `
+        <div class="convertkit-email" style="margin-bottom: 30px; padding: 20px; border: 1px solid #e1e5e9; border-radius: 8px;">
+          <h2 style="color: #2c3e50; margin-bottom: 15px;">${campaign.type}</h2>
+          <div style="margin-bottom: 15px;">
+            <strong>Subject:</strong> ${campaign.subject}
+          </div>
+          ${campaign.subjectVariations && campaign.subjectVariations.length > 0 ? `
+          <div style="margin-bottom: 15px;">
+            <strong>Subject Variations:</strong>
+            <ul style="margin: 5px 0; padding-left: 20px;">
+              ${campaign.subjectVariations.map(variation => `<li>${variation}</li>`).join('')}
+            </ul>
+          </div>
+          ` : ''}
+          <div style="margin-bottom: 15px;">
+            <strong>Preheader:</strong> ${campaign.preheader}
+          </div>
+          <div style="margin-bottom: 15px;">
+            <strong>Content:</strong>
+            <div style="background: #f8f9fa; padding: 15px; border-radius: 5px;">
+              ${campaign.content}
+            </div>
+          </div>
+          <div style="margin-bottom: 15px;">
+            <strong>CTA:</strong> ${campaign.cta}
+          </div>
+          <div>
+            <strong>Personalizations:</strong> ${campaign.personalizations.join(", ")}
+          </div>
+        </div>
+      `).join('');
+
+      const fullConvertkitHtml = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>ConvertKit Email Campaigns</title>
+          <meta charset="utf-8">
+        </head>
+        <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto;">
+          ${convertkitHtml}
+        </body>
+        </html>
+      `;
+
+      const blob = new Blob([fullConvertkitHtml], { type: "text/html" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", "convertkit-campaigns.html");
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      alert("ConvertKit export successful! Import the HTML file into your ConvertKit account.");
+    } catch (error) {
+      console.error("ConvertKit export error:", error);
+      alert("ConvertKit export failed. Please try again.");
+    }
+  };
+
+  const exportToSendGrid = (result: EmailResult) => {
+    if (!result || !result.campaigns) {
+      alert("No campaigns to export!");
+      return;
+    }
+
+    try {
+      // Generate SendGrid-compatible HTML
+      const sendgridHtml = result.campaigns.map(campaign => `
+        <div class="sendgrid-email" style="margin-bottom: 30px; padding: 20px; border: 1px solid #d1d5db; border-radius: 8px;">
+          <h2 style="color: #1f2937; margin-bottom: 15px;">${campaign.type}</h2>
+          <div style="margin-bottom: 15px;">
+            <strong>Subject:</strong> ${campaign.subject}
+          </div>
+          ${campaign.subjectVariations && campaign.subjectVariations.length > 0 ? `
+          <div style="margin-bottom: 15px;">
+            <strong>Subject Variations:</strong>
+            <ul style="margin: 5px 0; padding-left: 20px;">
+              ${campaign.subjectVariations.map(variation => `<li>${variation}</li>`).join('')}
+            </ul>
+          </div>
+          ` : ''}
+          <div style="margin-bottom: 15px;">
+            <strong>Preheader:</strong> ${campaign.preheader}
+          </div>
+          <div style="margin-bottom: 15px;">
+            <strong>Content:</strong>
+            <div style="background: #f3f4f6; padding: 15px; border-radius: 5px;">
+              ${campaign.content}
+            </div>
+          </div>
+          <div style="margin-bottom: 15px;">
+            <strong>CTA:</strong> ${campaign.cta}
+          </div>
+          <div>
+            <strong>Personalizations:</strong> ${campaign.personalizations.join(", ")}
+          </div>
+        </div>
+      `).join('');
+
+      const fullSendgridHtml = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>SendGrid Email Campaigns</title>
+          <meta charset="utf-8">
+        </head>
+        <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto;">
+          ${sendgridHtml}
+        </body>
+        </html>
+      `;
+
+      const blob = new Blob([fullSendgridHtml], { type: "text/html" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", "sendgrid-campaigns.html");
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      alert("SendGrid export successful! Import the HTML file into your SendGrid account.");
+    } catch (error) {
+      console.error("SendGrid export error:", error);
+      alert("SendGrid export failed. Please try again.");
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
@@ -768,6 +980,21 @@ P.S. This pricing won't be available again this year, so if you've been waiting 
                               <p className="font-medium">{campaign.subject}</p>
                             </div>
                           </div>
+                          
+                          {campaign.subjectVariations && campaign.subjectVariations.length > 0 && (
+                            <div>
+                              <h4 className="font-medium text-gray-900 mb-2">Subject Line Variations (A/B Testing):</h4>
+                              <div className="space-y-2">
+                                {campaign.subjectVariations.map((variation, varIndex) => (
+                                  <div key={varIndex} className="bg-blue-50 p-3 rounded-lg border-l-4 border-blue-500">
+                                    <p className="text-blue-800">
+                                      <span className="font-medium">Variation {varIndex + 1}:</span> {variation}
+                                    </p>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
 
                           <div>
                             <h4 className="font-medium text-gray-900 mb-2">Preheader:</h4>
@@ -857,6 +1084,18 @@ P.S. This pricing won't be available again this year, so if you've been waiting 
                     </div>
 
                     <div>
+                      <h4 className="font-medium text-gray-900 mb-2">A/B Testing Ideas:</h4>
+                      <ul className="space-y-1">
+                        {result.optimization?.abTestingIdeas?.map((idea, index) => (
+                          <li key={index} className="text-sm text-gray-600 flex items-center gap-2">
+                            <CheckCircle className="w-4 h-4 text-yellow-500" />
+                            {idea}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+
+                    <div>
                       <h4 className="font-medium text-gray-900 mb-2">Segmentation Tips:</h4>
                       <ul className="space-y-1">
                         {result.optimization?.segmentationTips?.map((tip, index) => (
@@ -883,27 +1122,58 @@ P.S. This pricing won't be available again this year, so if you've been waiting 
                 </Card>
 
                 {/* Action Buttons */}
-                <div className="flex gap-4">
-                  <Button
-                    variant="outline"
-                    onClick={() => copyToClipboard(JSON.stringify(result, null, 2), "all-emails")}
-                    className="flex-1"
-                  >
-                    {copied["all-emails"] ? (
-                      <CheckCircle className="w-4 h-4 mr-2" />
-                    ) : (
-                      <Copy className="w-4 h-4 mr-2" />
-                    )}
-                    {copied["all-emails"] ? "Copied!" : "Copy All Campaigns"}
-                  </Button>
-                  <Button variant="outline" className="flex-1 bg-transparent" onClick={handleExportToEmailPlatform} disabled={isExporting}>
-                    {isExporting ? (
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    ) : (
-                      <Download className="w-4 h-4 mr-2" />
-                    )}
-                    {isExporting ? "Exporting..." : "Export to Email Platform"}
-                  </Button>
+                <div className="space-y-4">
+                  <div className="flex gap-4">
+                    <Button
+                      variant="outline"
+                      onClick={() => copyToClipboard(JSON.stringify(result, null, 2), "all-emails")}
+                      className="flex-1"
+                    >
+                      {copied["all-emails"] ? (
+                        <CheckCircle className="w-4 h-4 mr-2" />
+                      ) : (
+                        <Copy className="w-4 h-4 mr-2" />
+                      )}
+                      {copied["all-emails"] ? "Copied!" : "Copy All Campaigns"}
+                    </Button>
+                    <Button variant="outline" className="flex-1 bg-transparent" onClick={handleExportToEmailPlatform} disabled={isExporting}>
+                      {isExporting ? (
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      ) : (
+                        <Download className="w-4 h-4 mr-2" />
+                      )}
+                      {isExporting ? "Exporting..." : "Export to Email Platform"}
+                    </Button>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <Button 
+                      variant="outline" 
+                      onClick={() => exportToMailchimp(result)}
+                      className="bg-orange-50 border-orange-200 text-orange-800 hover:bg-orange-100"
+                    >
+                      <Send className="w-4 h-4 mr-2" />
+                      Export to Mailchimp
+                    </Button>
+                    
+                    <Button 
+                      variant="outline" 
+                      onClick={() => exportToConvertKit(result)}
+                      className="bg-blue-50 border-blue-200 text-blue-800 hover:bg-blue-100"
+                    >
+                      <Send className="w-4 h-4 mr-2" />
+                      Export to ConvertKit
+                    </Button>
+                    
+                    <Button 
+                      variant="outline" 
+                      onClick={() => exportToSendGrid(result)}
+                      className="bg-green-50 border-green-200 text-green-800 hover:bg-green-100"
+                    >
+                      <Send className="w-4 h-4 mr-2" />
+                      Export to SendGrid
+                    </Button>
+                  </div>
                 </div>
               </div>
             )}

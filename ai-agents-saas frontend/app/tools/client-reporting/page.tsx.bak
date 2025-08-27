@@ -613,7 +613,7 @@ export default function ClientReportingPage() {
                     <div>
                       <h1 className="text-3xl font-bold text-gray-900 mb-2">Client Reporting Agent</h1>
                       <p className="text-gray-600">Generate comprehensive marketing reports with real data from all platforms</p>
-              </div>
+                    </div>
                     
                     {!hasAccess && (
                       <div className="flex items-center space-x-2 text-amber-600">
@@ -621,7 +621,7 @@ export default function ClientReportingPage() {
                         <span className="font-medium">Pro or Agency Plan Required</span>
                       </div>
                     )}
-          </div>
+                  </div>
         </div>
 
           {/* Input Form */}
@@ -859,7 +859,7 @@ export default function ClientReportingPage() {
                       <CardDescription>
                         Generated on {result.clientInfo?.generatedAt ? new Date(result.clientInfo.generatedAt).toLocaleDateString() : new Date().toLocaleDateString()}
                       </CardDescription>
-                      </div>
+                    </div>
                   <div className="flex space-x-2">
                     <Button
                       onClick={() => copyToClipboard(JSON.stringify(result, null, 2))}
@@ -899,22 +899,22 @@ export default function ClientReportingPage() {
                                       <div className={`flex items-center space-x-2 p-3 rounded-lg ${result.dataSources?.googleAnalytics ? 'bg-green-50 text-green-700' : 'bg-gray-50 text-gray-500'}`}>
                       <div className={`w-3 h-3 rounded-full ${result.dataSources?.googleAnalytics ? 'bg-green-500' : 'bg-gray-400'}`}></div>
                       <span className="text-sm font-medium">Google Analytics</span>
-                          </div>
+                    </div>
                     
                     <div className={`flex items-center space-x-2 p-3 rounded-lg ${result.dataSources?.facebookMarketing ? 'bg-green-50 text-green-700' : 'bg-gray-50 text-gray-500'}`}>
                       <div className={`w-3 h-3 rounded-full ${result.dataSources?.facebookMarketing ? 'bg-green-500' : 'bg-gray-400'}`}></div>
                       <span className="text-sm font-medium">Facebook Marketing</span>
-                            </div>
+                    </div>
                     
                     <div className={`flex items-center space-x-2 p-3 rounded-lg ${result.dataSources?.linkedinMarketing ? 'bg-green-50 text-green-700' : 'bg-gray-50 text-gray-500'}`}>
                       <div className={`w-3 h-3 rounded-full ${result.dataSources?.linkedinMarketing ? 'bg-green-500' : 'bg-gray-400'}`}></div>
                       <span className="text-sm font-medium">LinkedIn Marketing</span>
-                            </div>
+                    </div>
                     
                     <div className={`flex items-center space-x-2 p-3 rounded-lg ${result.dataSources?.googleAds ? 'bg-green-50 text-green-700' : 'bg-gray-50 text-gray-500'}`}>
                       <div className={`w-3 h-3 rounded-full ${result.dataSources?.googleAds ? 'bg-green-500' : 'bg-gray-400'}`}></div>
                       <span className="text-sm font-medium">Google Ads</span>
-                            </div>
+                    </div>
                     </div>
                   </CardContent>
                 </Card>
@@ -929,34 +929,34 @@ export default function ClientReportingPage() {
                   </CardHeader>
                   <CardContent>
                                   <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-                            <div className="text-center">
+                    <div className="text-center">
                       <div className="text-3xl font-bold text-blue-600 mb-2">
                         {result.realData?.summary?.totalTraffic?.toLocaleString() || '0'}
-                              </div>
+                      </div>
                       <div className="text-sm text-gray-600">Total Traffic</div>
-                            </div>
+                    </div>
                     
-                            <div className="text-center">
+                    <div className="text-center">
                       <div className="text-3xl font-bold text-green-600 mb-2">
                         {result.realData?.summary?.totalConversions?.toLocaleString() || '0'}
-                            </div>
+                      </div>
                       <div className="text-sm text-gray-600">Total Conversions</div>
-                            </div>
+                    </div>
                     
-                            <div className="text-center">
+                    <div className="text-center">
                       <div className="text-3xl font-bold text-purple-600 mb-2">
                         ${result.realData?.summary?.totalSpend?.toLocaleString() || '0'}
-                            </div>
+                      </div>
                       <div className="text-sm text-gray-600">Total Ad Spend</div>
                     </div>
                     
-                            <div className="text-center">
+                    <div className="text-center">
                       <div className="text-3xl font-bold text-orange-600 mb-2">
                         {result.realData?.summary?.overallROI?.toFixed(1) || '0.0'}%
-                            </div>
+                      </div>
                       <div className="text-sm text-gray-600">Overall ROI</div>
-                          </div>
                     </div>
+                  </div>
                   </CardContent>
                 </Card>
 
@@ -1056,7 +1056,7 @@ export default function ClientReportingPage() {
                     <Zap className="w-12 h-12 text-gray-400 mx-auto mb-4" />
                     <h4 className="text-lg font-semibold text-gray-600 mb-2">AI Insights Loading</h4>
                     <p className="text-gray-500">AI-powered insights and recommendations are being generated based on your data...</p>
-                          </div>
+                  </div>
                 )}
                 
                 {/* Executive Summary */}
@@ -1076,7 +1076,7 @@ export default function ClientReportingPage() {
                             </li>
                           )) || <li className="text-sm text-gray-500">Performance analysis in progress...</li>}
                         </ul>
-                        </div>
+                      </div>
                       
                       <div>
                         <h5 className="font-medium text-amber-700 mb-2">Challenges</h5>
@@ -1088,7 +1088,7 @@ export default function ClientReportingPage() {
                             </li>
                           )) || <li className="text-sm text-gray-500">Challenge assessment in progress...</li>}
                         </ul>
-                    </div>
+                      </div>
                     </div>
                   </div>
                 )}
@@ -1161,14 +1161,14 @@ export default function ClientReportingPage() {
 
             {/* Top Performing Channels */}
             {result.realData?.summary?.topPerformingChannels && result.realData.summary.topPerformingChannels.length > 0 && (
-                <Card>
-                  <CardHeader>
+              <Card>
+                <CardHeader>
                   <CardTitle className="flex items-center">
                     <TrendingUp className="w-5 h-5 mr-2" />
                     Top Performing Channels
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {result.realData.summary.topPerformingChannels.map((channel, index) => (
                       <div key={index} className="p-4 border rounded-lg">
@@ -1177,19 +1177,19 @@ export default function ClientReportingPage() {
                           <Badge variant={channel.performance === 'excellent' ? 'default' : 'secondary'}>
                             {channel.performance}
                           </Badge>
-                          </div>
+                </div>
                         <div className="text-2xl font-bold text-blue-600">
                           {channel.metric.toLocaleString()}
-                            </div>
-                        <div className="text-sm text-gray-500">{channel.type}</div>
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-            )}
               </div>
+                        <div className="text-sm text-gray-500">{channel.type}</div>
+          </div>
+                    ))}
+        </div>
+                </CardContent>
+              </Card>
             )}
+          </div>
+        )}
       </div>
     </div>
   )

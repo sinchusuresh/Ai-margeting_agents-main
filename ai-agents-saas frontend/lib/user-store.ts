@@ -28,6 +28,7 @@ interface UserStore {
   logout: () => void
   checkAdminStatus: () => Promise<boolean>
   initializeAuth: () => Promise<void>
+  refreshUserData: () => Promise<void>
 }
 
 export const useUserStore = create<UserStore>()(
@@ -85,15 +86,84 @@ export const useUserStore = create<UserStore>()(
       initializeAuth: async () => {
         const token = getStoredToken()
         if (token) {
-          set((state) => ({
-            user: { 
-              ...state.user, 
-              isAuthenticated: true,
-              isAdmin: false // Ensure admin status is reset on initialization
+          try {
+            // Fetch current user data from backend
+            const response = await fetch('/api/auth/me', {
+              headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+              }
+            });
+
+            if (response.ok) {
+              const userData = await response.json();
+              console.log('Backend user data:', userData);
+              
+              // Check if the response has a nested user object
+              const actualUserData = userData.user || userData;
+              console.log('Actual user data to use:', actualUserData);
+              
+              set((state) => ({
+                user: { 
+                  ...state.user, 
+                  ...actualUserData,
+                  isAuthenticated: true
+                }
+              }));
+            } else {
+              // Fallback to token-based auth
+              set((state) => ({
+                user: { 
+                  ...state.user, 
+                  isAuthenticated: true,
+                  isAdmin: false
+                }
+              }));
             }
-          }))
-          // Check admin status immediately but don't set it until confirmed
+          } catch (error) {
+            console.error('Error fetching user data:', error);
+            // Fallback to token-based auth
+            set((state) => ({
+              user: { 
+                ...state.user, 
+                isAuthenticated: true,
+                isAdmin: false
+              }
+            }));
+          }
+          
+          // Check admin status
           await get().checkAdminStatus()
+        }
+      },
+      
+      refreshUserData: async () => {
+        const token = getStoredToken()
+        if (token) {
+          try {
+            // Fetch current user data from backend
+            const response = await fetch('/api/auth/me', {
+              headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+              }
+            });
+
+            if (response.ok) {
+              const userData = await response.json();
+              console.log('Refreshed user data:', userData);
+              
+              set((state) => ({
+                user: { 
+                  ...state.user, 
+                  ...userData,
+                  isAuthenticated: true
+                }
+              }));
+            }
+          } catch (error) {
+            console.error('Error refreshing user data:', error);
+          }
         }
       },
       checkAdminStatus: async () => {

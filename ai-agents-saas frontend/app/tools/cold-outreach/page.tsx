@@ -59,6 +59,9 @@ export default function ColdOutreachPage() {
     productService: "",
     campaignGoal: "",
     tone: "",
+    linkedinUrl: "",
+    companyWebsite: "",
+    prospectName: "",
   })
   const [isGenerating, setIsGenerating] = useState(false)
   const [result, setResult] = useState<OutreachResult | null>(null)
@@ -179,6 +182,9 @@ export default function ColdOutreachPage() {
     try {
       // Prepare input data for the backend
       const inputData = {
+        prospectName: formData.prospectName || '',
+        linkedinUrl: formData.linkedinUrl || '',
+        companyWebsite: formData.companyWebsite || '',
         targetRole: formData.targetRole,
         industry: formData.industry,
         companySize: formData.companySize || 'Not specified',
@@ -316,6 +322,166 @@ export default function ColdOutreachPage() {
     URL.revokeObjectURL(csvUrl)
   }
 
+  const exportToGoogleSheets = () => {
+    if (!result) return
+
+    // Prepare data for Google Sheets export
+    const sheetData = {
+      prospects: [{
+        'Prospect Name': formData.prospectName || 'Prospect',
+        'LinkedIn URL': formData.linkedinUrl || '',
+        'Company Website': formData.companyWebsite || '',
+        'Target Role': formData.targetRole,
+        'Industry': formData.industry,
+        'Company Size': formData.companySize,
+        'Campaign Goal': formData.campaignGoal,
+        'Status': 'New'
+      }],
+      emailSequence: result?.sequences?.map((seq, index) => ({
+        'Email #': index + 1,
+        'Subject': seq?.subject || '',
+        'Content': seq?.content || '',
+        'Timing': seq?.timing || '',
+        'Purpose': seq?.purpose || '',
+        'Follow-up Trigger': seq?.followUpTrigger || ''
+      })) || [],
+      campaignAnalytics: [
+        { 'Metric': 'Expected Open Rate', 'Value': result?.analytics?.expectedOpenRate || 'N/A' },
+        { 'Metric': 'Expected Response Rate', 'Value': result?.analytics?.expectedResponseRate || 'N/A' },
+        { 'Metric': 'Expected Conversion Rate', 'Value': result?.analytics?.expectedConversionRate || 'N/A' },
+        { 'Metric': 'Best Send Times', 'Value': result?.analytics?.bestSendTimes?.join(', ') || 'N/A' }
+      ]
+    }
+
+    // Create CSV files for each sheet
+    const prospectsCSV = createCSVFromArray(sheetData.prospects)
+    const sequenceCSV = createCSVFromArray(sheetData.emailSequence)
+    const analyticsCSV = createCSVFromArray(sheetData.campaignAnalytics)
+
+    // Download all CSV files
+    downloadCSV(prospectsCSV, 'prospects.csv')
+    downloadCSV(sequenceCSV, 'email-sequence.csv')
+    downloadCSV(analyticsCSV, 'campaign-analytics.csv')
+
+    // Show success message
+    alert('Google Sheets data exported! Import the CSV files into your Google Sheets.')
+  }
+
+  const integrateWithCRM = async (crmType) => {
+    if (!result) return
+
+    try {
+      const response = await makeAuthenticatedRequest('/api/ai-tools/crm-integration', {
+        method: 'POST',
+        body: JSON.stringify({
+          crmType,
+          prospectData: {
+            prospectName: formData.prospectName,
+            linkedinUrl: formData.linkedinUrl,
+            companyWebsite: formData.companyWebsite,
+            targetRole: formData.targetRole,
+            industry: formData.industry,
+            companySize: formData.companySize,
+            painPoint: formData.painPoint,
+            valueProposition: formData.valueProposition,
+            campaignGoal: formData.campaignGoal,
+            linkedinProfile: result.prospectResearch?.linkedinProfile,
+            companyInfo: result.prospectResearch?.companyInfo
+          },
+          campaignData: {
+            campaignName: `Cold Outreach - ${formData.targetRole} in ${formData.industry}`,
+            targetRole: formData.targetRole,
+            industry: formData.industry,
+            campaignGoal: formData.campaignGoal,
+            valueProposition: formData.valueProposition
+          }
+        })
+      })
+
+      if (response.success) {
+        alert(`Successfully integrated with ${crmType}! ${response.message}`)
+      } else {
+        alert(`Failed to integrate with ${crmType}: ${response.error}`)
+      }
+
+    } catch (error) {
+      console.error('CRM integration error:', error)
+      alert(`Failed to integrate with ${crmType}. Please check your API configuration.`)
+    }
+  }
+
+  const sendMailmergeCampaign = async () => {
+    if (!result) return
+
+    try {
+      const response = await makeAuthenticatedRequest('/api/ai-tools/mailmerge-campaign', {
+        method: 'POST',
+        body: JSON.stringify({
+          prospects: [{
+            prospectName: formData.prospectName,
+            email: result.prospectResearch?.companyInfo?.contactInfo?.emails?.[0] || 'prospect@example.com',
+            companyName: result.prospectResearch?.companyInfo?.companyName,
+            role: formData.targetRole,
+            industry: formData.industry,
+            linkedinUrl: formData.linkedinUrl,
+            companyWebsite: formData.companyWebsite
+          }],
+          campaignData: {
+            campaignId: Date.now().toString(),
+            campaignName: `Cold Outreach - ${formData.targetRole} in ${formData.industry}`,
+            fromEmail: 'noreply@yourcompany.com',
+            fromName: 'Your Sales Team',
+            campaignGoal: formData.campaignGoal,
+            valueProposition: formData.valueProposition
+          },
+          emailTemplates: {
+            email: result?.sequences?.[0]?.content || '',
+            subject: result?.sequences?.[0]?.subject || ''
+          }
+        })
+      })
+
+      if (response.success) {
+        alert(`Mailmerge campaign sent successfully! ${response.totalSent} emails sent.`)
+      } else {
+        alert(`Failed to send mailmerge campaign: ${response.error}`)
+      }
+
+    } catch (error) {
+      console.error('Mailmerge campaign error:', error)
+      alert('Failed to send mailmerge campaign. Please check your SendGrid configuration.')
+    }
+  }
+
+  const createCSVFromArray = (data) => {
+    if (!data || data.length === 0) return ''
+    
+    const headers = Object.keys(data[0])
+    const csvRows = [headers.join(',')]
+    
+    for (const row of data) {
+      const values = headers.map(header => {
+        const value = row[header] || ''
+        return `"${value.toString().replace(/"/g, '""')}"`
+      })
+      csvRows.push(values.join(','))
+    }
+    
+    return csvRows.join('\n')
+  }
+
+  const downloadCSV = (csvContent, filename) => {
+    const blob = new Blob([csvContent], { type: 'text/csv' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = filename
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+  }
+
   const createCSVExport = (data: any) => {
     let csv = 'Campaign Name,Target Role,Industry,Company Size,Pain Point,Value Proposition,Email Number,Subject,Content,Timing,Purpose\n'
     
@@ -388,6 +554,45 @@ export default function ColdOutreachPage() {
                 <CardDescription>Configure your cold outreach campaign</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="prospectName">Prospect Name</Label>
+                  <Input
+                    id="prospectName"
+                    placeholder="John Smith, Sarah Johnson"
+                    value={formData.prospectName}
+                    onChange={(e) => handleInputChange("prospectName", e.target.value)}
+                    disabled={!hasAccess}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="linkedinUrl">LinkedIn Profile URL</Label>
+                  <Input
+                    id="linkedinUrl"
+                    placeholder="https://linkedin.com/in/johnsmith"
+                    value={formData.linkedinUrl}
+                    onChange={(e) => handleInputChange("linkedinUrl", e.target.value)}
+                    disabled={!hasAccess}
+                  />
+                  <p className="text-sm text-gray-600">
+                    🔍 We'll research their profile for personalization
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="companyWebsite">Company Website</Label>
+                  <Input
+                    id="companyWebsite"
+                    placeholder="https://company.com"
+                    value={formData.companyWebsite}
+                    onChange={(e) => handleInputChange("companyWebsite", e.target.value)}
+                    disabled={!hasAccess}
+                  />
+                  <p className="text-sm text-gray-600">
+                    🌐 We'll analyze their company for insights
+                  </p>
+                </div>
+
                 <div className="space-y-2">
                   <Label htmlFor="targetRole">Target Role *</Label>
                   <Input
@@ -553,6 +758,60 @@ export default function ColdOutreachPage() {
               </Card>
             ) : (
               <div className="space-y-6">
+                {/* Prospect Research Results */}
+                {result?.prospectResearch && !result.prospectResearch.error && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Users className="w-5 h-5 text-blue-500" />
+                        Prospect Research Results
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      {result.prospectResearch.linkedinProfile && (
+                        <div className="border rounded-lg p-4 bg-blue-50">
+                          <h4 className="font-medium text-blue-900 mb-2">LinkedIn Profile</h4>
+                          <div className="space-y-2 text-sm">
+                            <p><strong>Name:</strong> {result.prospectResearch.linkedinProfile.fullName}</p>
+                            <p><strong>Headline:</strong> {result.prospectResearch.linkedinProfile.headline}</p>
+                            <p><strong>Company:</strong> {result.prospectResearch.linkedinProfile.currentCompany}</p>
+                            <p><strong>Location:</strong> {result.prospectResearch.linkedinProfile.location}</p>
+                            {result.prospectResearch.linkedinProfile.skills && (
+                              <p><strong>Skills:</strong> {result.prospectResearch.linkedinProfile.skills.join(', ')}</p>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                      
+                      {result.prospectResearch.companyInfo && (
+                        <div className="border rounded-lg p-4 bg-green-50">
+                          <h4 className="font-medium text-green-900 mb-2">Company Information</h4>
+                          <div className="space-y-2 text-sm">
+                            <p><strong>Company:</strong> {result.prospectResearch.companyInfo.companyName}</p>
+                            <p><strong>Type:</strong> {result.prospectResearch.companyInfo.companyType}</p>
+                            <p><strong>Size:</strong> {result.prospectResearch.companyInfo.estimatedSize}</p>
+                            <p><strong>Description:</strong> {result.prospectResearch.companyInfo.description}</p>
+                          </div>
+                        </div>
+                        )}
+                      
+                      {result.prospectResearch.recentNews && result.prospectResearch.recentNews.length > 0 && (
+                        <div className="border rounded-lg p-4 bg-yellow-50">
+                          <h4 className="font-medium text-yellow-900 mb-2">Recent Company News</h4>
+                          <div className="space-y-2 text-sm">
+                            {result.prospectResearch.recentNews.slice(0, 3).map((news, index) => (
+                              <div key={index} className="border-l-2 border-yellow-400 pl-3">
+                                <p className="font-medium">{news.title}</p>
+                                {news.snippet && <p className="text-snippet">{news.snippet}</p>}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                )}
+
                 {/* Performance Predictions */}
                 <Card>
                   <CardHeader>
@@ -859,30 +1118,106 @@ export default function ColdOutreachPage() {
                   </CardContent>
                 </Card>
 
-                {/* Action Buttons */}
-                <div className="flex gap-4">
-                  <Button
-                    variant="outline"
-                    onClick={() => copyToClipboard(JSON.stringify(result, null, 2), "all-outreach")}
-                    className="flex-1"
-                  >
-                    {copied["all-outreach"] ? (
-                      <CheckCircle className="w-4 h-4 mr-2" />
-                    ) : (
-                      <Copy className="w-4 h-4 mr-2" />
-                    )}
-                    {copied["all-outreach"] ? "Copied!" : "Copy All Templates"}
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    className="flex-1 bg-transparent"
-                    onClick={exportToCRM}
-                    disabled={!result}
-                  >
-                    <Download className="w-4 h-4 mr-2" />
-                    Export to CRM
-                  </Button>
-                </div>
+                {/* CRM Integration & Export */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Users className="w-5 h-5 text-green-500" />
+                      CRM Integration & Export
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <Button 
+                        variant="outline" 
+                        className="w-full bg-transparent"
+                        onClick={exportToGoogleSheets}
+                        disabled={!result}
+                      >
+                        <svg className="w-4 h-4 mr-2" viewBox="0 0 24 24" fill="currentColor">
+                          <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/>
+                        </svg>
+                        Export to Google Sheets
+                      </Button>
+                      
+                      <Button 
+                        variant="outline" 
+                        className="w-full bg-transparent"
+                        onClick={exportToCRM}
+                        disabled={!result}
+                      >
+                        <Download className="w-4 h-4 mr-2" />
+                        Export to CRM
+                      </Button>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => integrateWithCRM('hubspot')}
+                        disabled={!result}
+                        className="bg-orange-50 hover:bg-orange-100"
+                      >
+                        <svg className="w-4 h-4 mr-2" viewBox="0 0 24 24" fill="currentColor">
+                          <path d="M9.5 4C5.36 4 2 6.69 2 10c0 1.89 1.08 3.56 2.78 4.66L3.5 20l3.5-2.5c1.1.66 2.33 1.5 3.5 1.5 3.64 0 7-2.69 7-6s-3.36-6-7-6z"/>
+                        </svg>
+                        HubSpot
+                      </Button>
+                      
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => integrateWithCRM('salesforce')}
+                        disabled={!result}
+                        className="bg-blue-50 hover:bg-blue-100"
+                      >
+                        <svg className="w-4 h-4 mr-2" viewBox="0 0 24 24" fill="currentColor">
+                          <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+                        </svg>
+                        Salesforce
+                      </Button>
+                      
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => integrateWithCRM('pipedrive')}
+                        disabled={!result}
+                        className="bg-green-50 hover:bg-green-100"
+                      >
+                        <svg className="w-4 h-4 mr-2" viewBox="0 0 24 24" fill="currentColor">
+                          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                        </svg>
+                        Pipedrive
+                      </Button>
+                    </div>
+
+                    <div className="flex gap-4">
+                      <Button
+                        variant="outline"
+                        onClick={() => copyToClipboard(JSON.stringify(result, null, 2), "all-outreach")}
+                        className="flex-1"
+                      >
+                        {copied["all-outreach"] ? (
+                          <CheckCircle className="w-4 h-4 mr-2" />
+                        ) : (
+                          <Copy className="w-4 h-4 mr-2" />
+                        )}
+                        {copied["all-outreach"] ? "Copied!" : "Copy All Templates"}
+                      </Button>
+                      
+                      <Button
+                        variant="outline"
+                        onClick={sendMailmergeCampaign}
+                        disabled={!result}
+                        className="flex-1 bg-green-50 hover:bg-green-100"
+                      >
+                        <Mail className="w-4 h-4 mr-2" />
+                        Send Mailmerge Campaign
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
               </div>
             )}
           </div>

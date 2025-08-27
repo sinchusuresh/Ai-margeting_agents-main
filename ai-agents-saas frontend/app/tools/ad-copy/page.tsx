@@ -34,6 +34,7 @@ interface AdVariation {
   headline: string
   description: string
   cta: string
+  cta_variations?: string[]
   character_count: {
     headline: number
     description: number
@@ -50,6 +51,7 @@ interface AdCopyResult {
     expected_ctr: string
     expected_cpc: string
     expected_conversion_rate: string
+    quality_score?: string
   }
   optimization_tips: Array<{
     category: string
@@ -190,10 +192,260 @@ export default function AdCopyPage() {
     return objectiveCTAs[Math.floor(Math.random() * objectiveCTAs.length)]
   }
 
-  const copyToClipboard = (text: string, id: string) => {
-    navigator.clipboard.writeText(text)
-    setCopied((prev) => ({ ...prev, [id]: true }))
-    setTimeout(() => setCopied((prev) => ({ ...prev, [id]: false })), 2000)
+  const getCTAActionText = (cta: string) => {
+    const ctaLower = cta.toLowerCase();
+    if (ctaLower.includes('get started') || ctaLower.includes('start') || ctaLower.includes('begin')) {
+      return 'Start onboarding';
+    } else if (ctaLower.includes('learn more') || ctaLower.includes('learn') || ctaLower.includes('discover')) {
+      return 'View details';
+    } else if (ctaLower.includes('try now') || ctaLower.includes('try') || ctaLower.includes('demo')) {
+      return 'Start trial';
+    } else if (ctaLower.includes('shop now') || ctaLower.includes('buy') || ctaLower.includes('purchase')) {
+      return 'Go to checkout';
+    } else if (ctaLower.includes('contact') || ctaLower.includes('reach')) {
+      return 'Contact sales';
+    } else {
+      return 'Take action';
+    }
+  };
+
+  const handleCTAAction = (cta: string, platform: string) => {
+    const ctaLower = cta.toLowerCase();
+    
+    // Show action modal with platform-specific options
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 10000;
+    `;
+    
+    const modalContent = document.createElement('div');
+    modalContent.style.cssText = `
+      background: white;
+      padding: 30px;
+      border-radius: 12px;
+      max-width: 500px;
+      width: 90%;
+      text-align: center;
+      box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);
+    `;
+    
+    let actionContent = '';
+    let actionButtons = '';
+    
+    // Get platform-specific URLs
+    const getPlatformUrls = (platform: string, action: string) => {
+      const platformLower = platform.toLowerCase();
+      
+      if (platformLower.includes('google') || platformLower.includes('ads')) {
+        return {
+          main: 'https://ads.google.com',
+          help: 'https://support.google.com/ads',
+          docs: 'https://developers.google.com/google-ads/api/docs',
+          demo: 'https://ads.google.com/um/Welcome/Home',
+          business: 'https://ads.google.com/um/Welcome/Home'
+        };
+      } else if (platformLower.includes('facebook') || platformLower.includes('meta')) {
+        return {
+          main: 'https://business.facebook.com',
+          help: 'https://www.facebook.com/business/help',
+          docs: 'https://developers.facebook.com/docs/marketing-api',
+          demo: 'https://business.facebook.com/overview',
+          business: 'https://business.facebook.com/overview'
+        };
+      } else if (platformLower.includes('instagram')) {
+        return {
+          main: 'https://business.instagram.com',
+          help: 'https://help.instagram.com',
+          docs: 'https://developers.facebook.com/docs/instagram-api',
+          demo: 'https://business.instagram.com/overview',
+          business: 'https://business.instagram.com/overview'
+        };
+      } else if (platformLower.includes('linkedin')) {
+        return {
+          main: 'https://business.linkedin.com',
+          help: 'https://www.linkedin.com/help/linkedin',
+          docs: 'https://developer.linkedin.com/docs',
+          demo: 'https://business.linkedin.com/marketing-solutions',
+          business: 'https://business.linkedin.com/marketing-solutions'
+        };
+      } else if (platformLower.includes('twitter')) {
+        return {
+          main: 'https://ads.twitter.com',
+          help: 'https://help.twitter.com/en/using-twitter/twitter-ads',
+          docs: 'https://developer.twitter.com/en/docs/ads',
+          demo: 'https://ads.twitter.com/onboarding',
+          business: 'https://ads.twitter.com/onboarding'
+        };
+      } else if (platformLower.includes('youtube')) {
+        return {
+          main: 'https://ads.youtube.com',
+          help: 'https://support.google.com/youtube/answer/9002584',
+          docs: 'https://developers.google.com/youtube/v3/docs',
+          demo: 'https://ads.youtube.com/onboarding',
+          business: 'https://ads.youtube.com/onboarding'
+        };
+      } else {
+        // Default fallback
+        return {
+          main: 'https://ads.google.com',
+          help: 'https://support.google.com/ads',
+          docs: 'https://developers.google.com/google-ads/api/docs',
+          demo: 'https://ads.google.com/um/Welcome/Home',
+          business: 'https://ads.google.com/um/Welcome/Home'
+        };
+      }
+    };
+
+    const urls = getPlatformUrls(platform, cta);
+    
+    if (ctaLower.includes('get started') || ctaLower.includes('start') || ctaLower.includes('begin')) {
+      actionContent = `
+        <h3 style="font-size: 24px; font-weight: 600; margin-bottom: 16px; color: #1f2937;">🚀 Get Started with ${platform}</h3>
+        <p style="color: #6b7280; margin-bottom: 24px;">Ready to launch your ${platform} campaign? Choose your next step:</p>
+      `;
+      actionButtons = `
+        <div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
+          <button onclick="window.open('${urls.main}', '_blank')" style="background: #4285f4; color: white; padding: 12px 24px; border: none; border-radius: 8px; cursor: pointer; font-weight: 500;">Open ${platform}</button>
+          <button onclick="window.open('${urls.help}', '_blank')" style="background: #34a853; color: white; padding: 12px 24px; border: none; border-radius: 8px; cursor: pointer; font-weight: 500;">View Tutorial</button>
+          <button onclick="this.closest('.modal-overlay').remove()" style="background: #6b7280; color: white; padding: 12px 24px; border: none; border-radius: 8px; cursor: pointer; font-weight: 500;">Close</button>
+        </div>
+      `;
+    } else if (ctaLower.includes('learn more') || ctaLower.includes('learn') || ctaLower.includes('discover')) {
+      actionContent = `
+        <h3 style="font-size: 24px; font-weight: 600; margin-bottom: 16px; color: #1f2937;">📚 Learn More About ${platform}</h3>
+        <p style="color: #6b7280; margin-bottom: 24px;">Discover best practices and strategies for ${platform} advertising:</p>
+      `;
+      actionButtons = `
+        <div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
+          <button onclick="window.open('${urls.docs}', '_blank')" style="background: #1877f2; color: white; padding: 12px 24px; border: none; border-radius: 8px; cursor: pointer; font-weight: 500;">${platform} Docs</button>
+          <button onclick="window.open('${urls.help}', '_blank')" style="background: #42a5f5; color: white; padding: 12px 24px; border: none; border-radius: 8px; cursor: pointer; font-weight: 500;">Help Center</button>
+          <button onclick="this.closest('.modal-overlay').remove()" style="background: #6b7280; color: white; padding: 12px 24px; border: none; border-radius: 8px; cursor: pointer; font-weight: 500;">Close</button>
+        </div>
+      `;
+    } else if (ctaLower.includes('try now') || ctaLower.includes('try') || ctaLower.includes('demo')) {
+      actionContent = `
+        <h3 style="font-size: 24px; font-weight: 600; margin-bottom: 16px; color: #1f2937;">🎯 Try ${platform} Now</h3>
+        <p style="color: #6b7280; margin-bottom: 24px;">Experience ${platform} advertising with our interactive demo:</p>
+      `;
+      actionButtons = `
+        <div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
+          <button onclick="window.open('${urls.demo}', '_blank')" style="background: #0077b5; color: white; padding: 12px 24px; border: none; border-radius: 8px; cursor: pointer; font-weight: 500;">Live Demo</button>
+          <button onclick="window.open('${urls.help}', '_blank')" style="background: #00a0dc; color: white; padding: 12px 24px; border: none; border-radius: 8px; cursor: pointer; font-weight: 500;">Free Course</button>
+          <button onclick="this.closest('.modal-overlay').remove()" style="background: #6b7280; color: white; padding: 12px 24px; border: none; border-radius: 8px; cursor: pointer; font-weight: 500;">Close</button>
+        </div>
+      `;
+    } else if (ctaLower.includes('shop now') || ctaLower.includes('buy') || ctaLower.includes('purchase')) {
+      actionContent = `
+        <h3 style="font-size: 24px; font-weight: 600; margin-bottom: 16px; color: #1f2937;">🛒 Shop Now on ${platform}</h3>
+        <p style="color: #6b7280; margin-bottom: 24px;">Ready to purchase? Complete your ${platform} campaign setup:</p>
+      `;
+      actionButtons = `
+        <div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
+          <button onclick="window.open('${urls.demo}', '_blank')" style="background: #ea4335; color: white; padding: 12px 24px; border: none; border-radius: 8px; cursor: pointer; font-weight: 500;">Create Campaign</button>
+          <button onclick="window.open('${urls.business}', '_blank')" style="background: #1877f2; color: white; padding: 12px 24px; border: none; border-radius: 8px; cursor: pointer; font-weight: 500;">Business Manager</button>
+          <button onclick="this.closest('.modal-overlay').remove()" style="background: #6b7280; color: white; padding: 12px 24px; border: none; border-radius: 8px; cursor: pointer; font-weight: 500;">Close</button>
+        </div>
+      `;
+    } else {
+      actionContent = `
+        <h3 style="font-size: 24px; font-weight: 600; margin-bottom: 16px; color: #1f2937;">🎯 ${cta} Action</h3>
+        <p style="color: #6b7280; margin-bottom: 24px;">Take action with your ${platform} campaign:</p>
+      `;
+      actionButtons = `
+        <div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
+          <button onclick="window.open('${urls.main}', '_blank')" style="background: #4285f4; color: white; padding: 12px 24px; border: none; border-radius: 8px; cursor: pointer; font-weight: 500;">Open ${platform}</button>
+          <button onclick="this.closest('.modal-overlay').remove()" style="background: #6b7280; color: white; padding: 12px 24px; border: none; border-radius: 8px; cursor: pointer; font-weight: 500;">Close</button>
+        </div>
+      `;
+    }
+    
+    modalContent.innerHTML = actionContent + actionButtons;
+    modal.appendChild(modalContent);
+    modal.className = 'modal-overlay';
+    document.body.appendChild(modal);
+    
+    // Close modal when clicking outside
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) {
+        modal.remove();
+      }
+    });
+    
+    // Log the action
+    console.log(`CTA Action: ${cta} clicked for ${platform}`);
+  };
+
+  const copyToClipboard = async (text: string, id: string) => {
+    try {
+      // Try modern clipboard API first
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(text);
+        console.log('Text copied via clipboard API:', text);
+      } else {
+        // Fallback for older browsers or non-secure contexts
+        const textArea = document.createElement('textarea');
+        textArea.value = text;
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-999999px';
+        textArea.style.top = '-999999px';
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        
+        try {
+          document.execCommand('copy');
+          console.log('Text copied via execCommand:', text);
+        } catch (err) {
+          console.error('execCommand failed:', err);
+          // Last resort - show alert with text
+          alert(`Copy this text: ${text}`);
+        }
+        
+        document.body.removeChild(textArea);
+      }
+      
+      // Show success feedback
+      setCopied((prev) => ({ ...prev, [id]: true }));
+      
+      // Show what was copied
+      const toast = document.createElement('div');
+      toast.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: #10b981;
+        color: white;
+        padding: 12px 20px;
+        border-radius: 8px;
+        z-index: 9999;
+        font-family: system-ui, sans-serif;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        max-width: 300px;
+        word-wrap: break-word;
+      `;
+      toast.textContent = `Copied: ${text}`;
+      document.body.appendChild(toast);
+      
+      setTimeout(() => {
+        document.body.removeChild(toast);
+      }, 3000);
+      
+      setTimeout(() => setCopied((prev) => ({ ...prev, [id]: false })), 2000);
+      
+    } catch (error) {
+      console.error('Clipboard copy failed:', error);
+      // Show alert as fallback
+      alert(`Copy this text: ${text}`);
+    }
   }
 
   const handleExportToCSV = () => {
@@ -207,7 +459,7 @@ export default function AdCopyPage() {
     try {
       // Create CSV content for ad platform import
       const headers = [
-        "Platform", "Format", "Headline", "Description", "CTA", "Headline Characters", "Description Characters",
+        "Platform", "Format", "Headline", "Description", "CTA", "CTA Variations", "Headline Characters", "Description Characters",
         "Compliance Passed", "Compliance Issues", "Expected CTR", "Expected CPC", "Expected Conversion Rate",
         "Quality Score", "Primary Keywords", "Secondary Keywords"
       ];
@@ -218,6 +470,7 @@ export default function AdCopyPage() {
         variation.headline.replace(/\n/g, " ").replace(/\r/g, " "),
         variation.description.replace(/\n/g, " ").replace(/\r/g, " "),
         variation.cta,
+        variation.cta_variations ? variation.cta_variations.join(" | ") : "N/A",
         variation.character_count.headline,
         variation.character_count.description,
         variation.compliance_check.passed ? "Yes" : "No",
@@ -536,7 +789,14 @@ export default function AdCopyPage() {
                         </div>
                         <div className="text-sm text-gray-600">Conversion Rate</div>
                       </div>
-
+                      <div className="text-center p-3 bg-orange-50 rounded-lg">
+                        <div className="text-2xl font-bold text-orange-600">
+                          {result.performance_predictions && result.performance_predictions.quality_score !== undefined
+                            ? result.performance_predictions.quality_score
+                            : "N/A"}
+                        </div>
+                        <div className="text-sm text-gray-600">Quality Score</div>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
@@ -610,6 +870,47 @@ export default function AdCopyPage() {
                                 <p className="font-medium text-green-800">{variation.cta}</p>
                               </div>
                             </div>
+
+                            {variation.cta_variations && variation.cta_variations.length > 0 && (
+                              <div>
+                                <h4 className="font-medium text-gray-900 mb-2">CTA Variations for A/B Testing:</h4>
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                                  {variation.cta_variations.map((cta, idx) => (
+                                    <div key={idx} className="flex flex-col gap-2">
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => handleCTAAction(cta, variation.platform)}
+                                        className="bg-orange-50 hover:bg-orange-100 border-orange-200 text-orange-800 h-auto p-2 relative group"
+                                        title={`Click to ${getCTAActionText(cta)}`}
+                                      >
+                                        <span className="text-sm font-medium">{cta}</span>
+                                        
+                                        {/* Tooltip */}
+                                        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10">
+                                          {getCTAActionText(cta)}
+                                        </div>
+                                      </Button>
+                                      
+                                      {/* Copy button below each CTA */}
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => copyToClipboard(cta, `cta-${index}-${idx}`)}
+                                        className="h-8 text-xs text-gray-600 hover:text-gray-800 hover:bg-gray-100"
+                                      >
+                                        {copied[`cta-${index}-${idx}`] ? (
+                                          <CheckCircle className="w-3 h-3 mr-1" />
+                                        ) : (
+                                          <Copy className="w-3 h-3 mr-1" />
+                                        )}
+                                        Copy
+                                      </Button>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
 
                             {!variation.compliance_check.passed && variation.compliance_check.issues.length > 0 && (
                               <div>

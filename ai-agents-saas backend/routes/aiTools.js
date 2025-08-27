@@ -6,18 +6,18 @@ const rateLimit = require("express-rate-limit")
 const axios = require('axios');
 const cheerio = require('cheerio');
 const NotificationService = require("../services/notificationService");
-const SocialMediaScheduler = require("../services/socialMediaScheduler");
-const CanvaService = require("../services/canvaService");
+
+// Import Local SEO services
+const LocalSEOService = require("../services/localSEOService");
+const CitationBuildingService = require("../services/citationBuildingService");
+const LocalSEOAnalyticsService = require("../services/localSEOAnalyticsService");
+
+// Import Competitor Analysis service
+const CompetitorAnalysisService = require("../services/competitorAnalysisService");
+
 require('dotenv').config();
 
 const router = express.Router()
-
-// Debug environment variables loading
-console.log('🔍 Environment Variables Check:');
-console.log('📝 NODE_ENV:', process.env.NODE_ENV);
-console.log('📝 OPENAI_API_KEY exists:', !!process.env.OPENAI_API_KEY);
-console.log('📝 OPENAI_API_KEY length:', process.env.OPENAI_API_KEY ? process.env.OPENAI_API_KEY.length : 'undefined');
-console.log('📝 OPENAI_API_KEY starts with sk-:', process.env.OPENAI_API_KEY ? process.env.OPENAI_API_KEY.startsWith('sk-') : 'undefined');
 
 // Rate limiting for AI tool usage
 const toolLimiter = rateLimit({
@@ -49,12 +49,6 @@ const openaiLimiter = rateLimit({
 // AI Tools configuration
 const AI_TOOLS = {
 
-  "seo-audit": {
-    name: "SEO Audit Tool",
-    description: "Single page SEO analysis",
-    category: "SEO",
-    freeInTrial: true,
-  },
   "social-media": {
     name: "Social Media Content Generator",
     description: "Generate engaging social media posts",
@@ -393,17 +387,10 @@ router.post("/:toolId/generate", auth, toolLimiter, openaiLimiter, checkToolAcce
     // Generate content using AI
     let output
     try {
-      console.log(`🔄 Starting AI generation for ${toolId}...`);
       output = await simulateAIGeneration(toolId, input)
-      console.log(`✅ AI generation completed for ${toolId}:`, output ? 'Success' : 'No output');
-      if (output) {
-        console.log(`📊 Output keys:`, Object.keys(output));
-      }
     } catch (aiError) {
-      console.error(`❌ AI generation failed for ${toolId}:`, aiError)
-      console.error(`📝 Error details:`, aiError.message, aiError.stack)
+      console.error(`AI generation failed for ${toolId}:`, aiError)
       output = getFallbackData(toolId, input)
-      console.log(`🔄 Using fallback data for ${toolId}`);
     }
 
     // Log usage with debug output
@@ -467,29 +454,6 @@ router.post("/:toolId/generate", auth, toolLimiter, openaiLimiter, checkToolAcce
       console.warn(`Invalid output for ${toolId}, using fallback data`);
       output = getFallbackData(toolId, input);
     }
-    
-    // For SEO audit, ensure we have the complete data structure
-    if (toolId === 'seo-audit') {
-      console.log('🔍 SEO Audit output validation:');
-      console.log('📊 Output keys:', Object.keys(output));
-      console.log('📊 Has technicalSEO:', !!output.technicalSEO);
-      console.log('📊 Has performance:', !!output.performance);
-      console.log('📊 Has recommendations:', !!output.recommendations);
-      
-      // Ensure all required sections exist
-      if (!output.technicalSEO) {
-        console.log('⚠️ Missing technicalSEO, adding fallback');
-        output.technicalSEO = getFallbackData('seo-audit', input).technicalSEO;
-      }
-      if (!output.performance) {
-        console.log('⚠️ Missing performance, adding fallback');
-        output.performance = getFallbackData('seo-audit', input).performance;
-      }
-      if (!output.recommendations) {
-        console.log('⚠️ Missing recommendations, adding fallback');
-        output.recommendations = getFallbackData('seo-audit', input).recommendations;
-      }
-    }
 
     res.json({
       success: true,
@@ -539,34 +503,14 @@ router.post("/:toolId/generate", auth, toolLimiter, openaiLimiter, checkToolAcce
 
 // AI Generation function with OpenAI API integration
 async function simulateAIGeneration(toolId, input) {
-  console.log('🔑 OpenAI API Key Check:');
-  console.log('📝 Environment variable exists:', !!process.env.OPENAI_API_KEY);
-  console.log('📝 API Key length:', process.env.OPENAI_API_KEY ? process.env.OPENAI_API_KEY.length : 0);
-  console.log('📝 API Key starts with sk-:', process.env.OPENAI_API_KEY ? process.env.OPENAI_API_KEY.startsWith('sk-') : false);
-  
   // Check if OpenAI API key is available
   if (!process.env.OPENAI_API_KEY) {
-    console.log('❌ OpenAI API key not found, using fallback mock data');
-    console.log('💡 Check your .env file and make sure it contains: OPENAI_API_KEY=sk-your-key-here');
+    console.log('OpenAI API key not found, using fallback mock data');
     return getFallbackData(toolId, input);
   }
-  
-  if (!process.env.OPENAI_API_KEY.startsWith('sk-')) {
-    console.log('❌ OpenAI API key format invalid, using fallback mock data');
-    console.log('💡 API key should start with "sk-"');
-    return getFallbackData(toolId, input);
-  }
-  
-  console.log('✅ OpenAI API key found and valid, proceeding with AI generation');
 
   try {
-    if (toolId === 'seo-audit') {
-      console.log('🎯 Calling generateSEOAudit function...');
-      const result = await generateSEOAudit(input);
-      console.log('✅ generateSEOAudit completed successfully');
-      console.log('📊 Result keys:', Object.keys(result));
-      return result;
-    } else if (toolId === 'product-launch') {
+    if (toolId === 'product-launch') {
       return await generateProductLaunchPlan(input);
     } else if (toolId === 'blog-to-video') {
       return await generateBlogToVideoScript(input);
@@ -585,9 +529,303 @@ async function simulateAIGeneration(toolId, input) {
     } else if (toolId === 'competitor-analysis') {
       return await generateCompetitorAnalysis(input);
     } else if (toolId === 'cold-outreach') {
-      return await generateColdOutreach(input);
+      return {
+        _warning: "⚠️ This is static fallback content. For dynamic AI-generated content, please ensure your OpenAI API key is configured correctly.",
+        _aiGenerated: false,
+        personalizationElements: {
+          researchPoints: [
+            "Company size and structure analysis",
+            "Industry challenges and pain points",
+            "Role responsibilities and decision-making power",
+            "Recent company news and developments",
+            "Competitive landscape insights"
+          ],
+          commonGround: [
+            "Shared industry challenges and opportunities",
+            "Common business goals and objectives",
+            "Similar market positioning and strategies",
+            "Mutual professional interests and expertise",
+            "Common customer pain points and solutions"
+          ],
+          valuePropositions: [
+            "Increase operational efficiency by 40%",
+            "Reduce customer acquisition costs by 60%",
+            "Improve team productivity and collaboration",
+            "Streamline workflow processes and automation",
+            "Enhance customer satisfaction and retention"
+          ]
+        },
+        outreachMessages: [
+          {
+            platform: "LinkedIn",
+            message: "Hi [Name], I came across your profile and was impressed by your work in [Industry]. I've been helping companies like [Company] address similar challenges around [Pain Point]. Would love to share some insights that might be relevant to your current initiatives.",
+            subjectLine: "Quick thought on your industry approach",
+            content: "Hi [Name], I came across your profile and was impressed by your work in [Industry]. I've been helping companies like [Company] address similar challenges around [Pain Point]. Would love to share some insights that might be relevant to your current initiatives.",
+            timing: "Tuesday 10 AM or Wednesday 2 PM",
+            purpose: "Build authentic connection through shared insights",
+            followUpTrigger: "No response after 3 business days"
+          },
+          {
+            platform: "Email",
+            message: "Hi [Name], I hope this finds you well. I've been following your work in [Industry] and wanted to reach out about a solution that's helping companies like yours address [Pain Point]. Would you be open to a brief conversation about what we're seeing in the market?",
+            subjectLine: "Quick question about your approach to [Challenge]",
+            content: "Hi [Name], I hope this finds you well. I've been following your work in [Industry] and wanted to reach out about a solution that's helping companies like yours address [Pain Point]. Would you be open to a brief conversation about what we're seeing in the market?",
+            timing: "Tuesday 9 AM or Thursday 3 PM",
+            purpose: "Establish thought leadership connection",
+            followUpTrigger: "No response after 4 business days"
+          },
+          {
+            platform: "Twitter",
+            message: "Hey [Name]! Your recent insights on [Topic] really resonated with me. Been seeing similar patterns in [Industry] and would love to connect. What's your take on [Current Trend]?",
+            subjectLine: "Your insights on [Topic] got me thinking",
+            content: "Hey [Name]! Your recent insights on [Topic] really resonated with me. Been seeing similar patterns in [Industry] and would love to connect. What's your take on [Current Trend]?",
+            timing: "Monday 11 AM or Friday 1 PM",
+            purpose: "Engage through shared interests and trends",
+            followUpTrigger: "No response after 2 business days"
+          },
+          {
+            platform: "Phone",
+            script: "Hi [Name], this is [Your Name] calling. I came across your work at [Company] and was impressed by your approach to [Challenge]. I've been helping similar companies address this and wanted to share some insights. Do you have a moment to chat?",
+            subjectLine: "Quick call about [Company] and [Challenge]",
+            content: "Hi [Name], this is [Your Name] calling. I came across your work at [Company] and was impressed by your approach to [Challenge]. I've been helping similar companies address this and wanted to share some insights. Do you have a moment to chat?",
+            timing: "Tuesday 10 AM or Wednesday 2 PM",
+            purpose: "Direct engagement and relationship building",
+            followUpTrigger: "No response after 1 business day"
+          }
+        ],
+        personalizationTemplates: [
+          {
+            templateName: "Value-First Approach",
+            hook: "Reference recent company news or achievements",
+            personalization: "Mention specific role responsibilities and industry challenges",
+            valueProposition: "Focus on measurable outcomes and ROI",
+            callToAction: "Request brief conversation or share specific insights"
+          },
+          {
+            templateName: "Industry Expert Connection",
+            hook: "Share industry insights or market trends",
+            personalization: "Reference mutual connections or professional background",
+            valueProposition: "Highlight expertise and proven track record",
+            callToAction: "Offer to share case studies or best practices"
+          }
+        ],
+        followUpSequence: [
+          {
+            followUp1: "Hi [Name], just wanted to follow up on my previous message about [Topic]. I thought you might find this [Resource/Insight] interesting given your work in [Area].",
+            timing1: "3-5 business days after initial contact"
+          },
+          {
+            followUp2: "Hi [Name], I understand you're busy, but I wanted to share this quick insight about [Trend/Challenge] that might be relevant to [Company] right now.",
+            timing2: "1 week after first follow-up"
+          },
+          {
+            followUp3: "Hi [Name], this will be my final follow-up. I've enjoyed learning about your work at [Company]. If you're interested in [Topic] in the future, feel free to reach out.",
+            timing3: "2 weeks after second follow-up"
+          }
+        ],
+        bestPractices: {
+          do: [
+            "Personalize based on recent company news or achievements",
+            "Reference mutual connections or professional background",
+            "Focus on value and insights rather than sales pitch",
+            "Use appropriate timing and follow-up sequences",
+            "Maintain professional and authentic tone"
+          ],
+          dont: [
+            "Don't use generic templates or mass messaging",
+            "Don't focus solely on product features",
+            "Don't be pushy or aggressive in follow-ups",
+            "Don't ignore personalization opportunities",
+            "Don't send without proper research and preparation"
+          ],
+          timing: "Best times: Tuesday 10 AM, Wednesday 2 PM, Thursday 9 AM. Avoid: Monday mornings, Friday afternoons, holidays"
+        },
+        trackingMetrics: {
+          responseRate: "15-25% (vs industry average of 5-8%)",
+          conversionRate: "3-5% (vs industry average of 1-2%)",
+          successFactors: [
+            "Authentic personalization based on research",
+            "Value-first messaging approach",
+            "Strategic timing and follow-up sequences",
+            "Multi-channel touchpoint orchestration",
+            "Continuous optimization based on response patterns"
+          ]
+        },
+        optimizationTesting: {
+          subjectLineVariations: [
+            "Question-based: 'Quick question about your approach to [Challenge]'",
+            "Value-focused: 'Thought you'd find this [Insight] interesting'",
+            "Industry-specific: 'Your insights on [Topic] got me thinking'",
+            "Connection-based: 'Mutual connection and [Company] insights'",
+            "Trend-focused: 'Quick thought on [Current Trend] in [Industry]'"
+          ],
+          abTestingSuggestions: [
+            "Test emotional vs logical hooks in subject lines",
+            "Experiment with different personalization depths",
+            "Vary message length and complexity",
+            "Test different call-to-action urgency levels",
+            "Compare direct vs indirect value propositions"
+          ],
+          followUpStrategy: "Multi-touch sequence: Day 1 (initial), Day 3 (value-add), Day 7 (case study), Day 14 (final offer). Vary content and approach in each follow-up."
+        }
+      };
     } else if (toolId === 'reels-scripts') {
-      return await generateReelsScript(input);
+      return {
+        _warning: "⚠️ This is static fallback content. For dynamic AI-generated content, please ensure your OpenAI API key is configured correctly.",
+        _aiGenerated: false,
+        scriptVariations: [
+          {
+            hook: `POV: You just discovered the ${input.topic || 'topic'} hack that changes everything 👀`,
+            mainContent: `🎬 SCENE 1 (0-3s): Hook
+"Stop scrolling! This ${input.topic || 'tip'} will blow your mind"
+[Show dramatic before/after or surprising statistic]
+
+🎬 SCENE 2 (3-8s): Problem
+"Most ${input.targetAudience || 'people'} struggle with [common problem]"
+[Show relatable struggle/pain point]
+
+🎬 SCENE 3 (8-20s): Solution
+"Here's the game-changer:"
+• Step 1: [Quick action]
+• Step 2: [Simple technique]  
+• Step 3: [Final result]
+[Show each step visually]
+
+🎬 SCENE 4 (20-25s): Proof
+"This worked for [example/testimonial]"
+[Show results or social proof]
+
+🎬 SCENE 5 (25-30s): CTA
+"Save this for later and follow for more ${input.topic || 'tips'}!"`,
+            callToAction: "Save this post and follow @youraccount for more tips!",
+            visualCues: ["Dramatic before/after", "Step-by-step visuals", "Social proof elements"],
+            audioNotes: ["Upbeat background music", "Clear voiceover with enthusiasm"]
+          },
+          {
+            hook: `Things ${input.targetAudience || 'people'} don't know about ${input.topic || 'this topic'} 🤯`,
+            mainContent: `🎵 Trending Sound: [Current viral sound]
+
+📱 VISUAL SEQUENCE:
+0-3s: Hook with surprising fact
+3-8s: Problem demonstration
+8-20s: Solution breakdown
+20-25s: Results showcase
+25-30s: Engagement CTA
+
+💡 KEY MESSAGE:
+"${input.topic || 'This topic'} is simpler than you think!"`,
+            callToAction: "Comment 'YES' if you learned something new!",
+            visualCues: ["Surprising statistics", "Problem-solution flow", "Engaging transitions"],
+            audioNotes: ["Trending sound integration", "Dynamic voiceover pacing"]
+          }
+        ],
+        platformSpecific: {
+          instagramReels: {
+            script: `Instagram Reels Script for ${input.topic || 'topic'}:
+            
+🎬 OPENING (0-3s):
+"Stop what you're doing right now!"
+
+🎬 HOOK (3-8s):
+"This ${input.topic || 'tip'} changed my life"
+
+🎬 CONTENT (8-25s):
+• [Key point 1]
+• [Key point 2] 
+• [Key point 3]
+
+🎬 CLOSING (25-30s):
+"Save this and follow for more!"`,
+            hashtags: [`#${input.topic?.replace(/\s+/g, '') || 'tips'}`, "#reels", "#viral", "#fyp", "#trending"],
+            trendingSounds: ["Upbeat pop", "Electronic beats", "Motivational"],
+            engagementTips: ["Ask questions", "Use trending sounds", "Post at peak times"]
+          },
+          tiktok: {
+            script: `TikTok Script for ${input.topic || 'topic'}:
+            
+🎵 SOUND: [Trending audio]
+
+📱 VISUAL:
+0-3s: Hook with text overlay
+3-8s: Problem setup
+8-20s: Solution steps
+20-25s: Results
+25-30s: CTA with duet challenge`,
+            hashtags: [`#${input.topic?.replace(/\s+/g, '') || 'tips'}`, "#tiktok", "#fyp", "#viral", "#trending"],
+            trendingSounds: ["Viral remixes", "Popular songs", "Sound effects"],
+            engagementTips: ["Use trending sounds", "Create duet challenges", "Engage with comments"]
+          },
+          youtubeShorts: {
+            script: `YouTube Shorts Script for ${input.topic || 'topic'}:
+            
+🎬 INTRO (0-3s):
+"Quick ${input.topic || 'tip'} you need to know"
+
+🎬 MAIN (3-25s):
+[Detailed explanation with visuals]
+
+🎬 OUTRO (25-30s):
+"Subscribe for more ${input.topic || 'tips'}!"`,
+            hashtags: [`#${input.topic?.replace(/\s+/g, '') || 'tips'}`, "#shorts", "#youtube", "#trending"],
+            engagementTips: ["Optimize for search", "Use end screens", "Cross-promote"]
+          }
+        },
+        visualElements: {
+          transitions: ["Quick cuts", "Slide transitions", "Zoom effects"],
+          effects: ["Text animations", "Color grading", "Motion graphics"],
+          textOverlays: ["Key statistics", "Step numbers", "Call-to-action text"]
+        },
+        audioGuidance: {
+          backgroundMusic: "Upbeat, energetic tracks (120-140 BPM)",
+          voiceoverStyle: "Enthusiastic, clear, and engaging",
+          soundEffects: ["Success chimes", "Transition swooshes"]
+        },
+        optimization: {
+          titleSuggestions: [
+            `${input.topic || 'Topic'} Hack You Need to Know`,
+            `The ${input.topic || 'Secret'} That Changes Everything`,
+            `${input.topic || 'Tip'} That Will Blow Your Mind`
+          ],
+          descriptionTemplates: [
+            `Learn the ${input.topic || 'secret'} that professionals use!`,
+            `This ${input.topic || 'tip'} changed my life - try it now!`,
+            `The ${input.topic || 'hack'} you've been missing out on!`
+          ],
+          thumbnailIdeas: [
+            "Before/after comparison",
+            "Surprised expression with text",
+            "Step-by-step visual guide"
+          ]
+        },
+        exportOptions: {
+          pdfReady: true,
+          copyableText: `Complete Script for ${input.topic || 'topic'}:
+
+HOOK: ${input.topic || 'Topic'} hack that changes everything
+
+MAIN CONTENT:
+• Problem: [Common struggle]
+• Solution: [Step-by-step process]
+• Proof: [Results and examples]
+
+CALL TO ACTION: Save and follow for more tips!
+
+VISUALS: [Visual elements and transitions]
+AUDIO: [Music and voiceover guidance]`,
+          descriptCompatible: `Descript Script Format:
+[0:00-0:03] Hook: ${input.topic || 'Topic'} hack
+[0:03-0:08] Problem setup
+[0:08-0:20] Solution breakdown
+[0:20-0:25] Results showcase
+[0:25-0:30] Call to action`,
+          canvaTemplate: `Canva Template Instructions:
+1. Use 9:16 aspect ratio
+2. Add text overlays for key points
+3. Include visual elements for each scene
+4. Use consistent color scheme
+5. Add engaging transitions between scenes`
+        }
+      };
     } else if (toolId === 'local-seo') {
       return await generateLocalSEO(input);
     } else {
@@ -997,77 +1235,36 @@ async function generateSocialMediaContent(input) {
   console.log('Input received:', JSON.stringify(input, null, 2));
   
   // Determine content mix based on user inputs
-  // Generate dynamic content mix based on user inputs with AI-powered customization
-  const getContentMix = (contentGoals, brandVoice, postFrequency, business, industry, targetAudience) => {
-    // Base percentages that will be dynamically adjusted
-    let educational = 35, engaging = 35, promotional = 20, ugc = 10;
-    
-    // Dynamic adjustments based on business context
-    if (industry?.toLowerCase().includes('healthcare') || industry?.toLowerCase().includes('medical')) {
-      educational = Math.min(educational + 15, 50);
-      promotional = Math.max(promotional - 10, 10);
-      engaging = Math.max(engaging - 5, 25);
-    } else if (industry?.toLowerCase().includes('e-commerce') || industry?.toLowerCase().includes('retail')) {
-      promotional = Math.min(promotional + 10, 30);
-      engaging = Math.min(engaging + 5, 40);
-      educational = Math.max(educational - 5, 25);
-    } else if (industry?.toLowerCase().includes('technology') || industry?.toLowerCase().includes('software')) {
-      educational = Math.min(educational + 10, 45);
-      engaging = Math.min(engaging + 5, 40);
-      promotional = Math.max(promotional - 5, 15);
-    } else if (industry?.toLowerCase().includes('hospitality') || industry?.toLowerCase().includes('tourism')) {
-      engaging = Math.min(engaging + 15, 50);
-      ugc = Math.min(ugc + 10, 25);
-      educational = Math.max(educational - 10, 20);
-    }
+  const getContentMix = (contentGoals, brandVoice, postFrequency) => {
+    let educational = 40, engaging = 30, promotional = 20, ugc = 10;
     
     // Adjust based on content goals
     if (contentGoals?.toLowerCase().includes('lead')) {
-      promotional = Math.min(promotional + 10, 35);
-      educational = Math.max(educational - 5, 20);
-      engaging = Math.max(engaging - 5, 25);
+      promotional = 35; educational = 25; engaging = 25; ugc = 15;
     } else if (contentGoals?.toLowerCase().includes('awareness')) {
-      educational = Math.min(educational + 15, 50);
-      engaging = Math.min(engaging + 5, 40);
-      promotional = Math.max(promotional - 10, 10);
+      educational = 45; engaging = 30; promotional = 15; ugc = 10;
     } else if (contentGoals?.toLowerCase().includes('engagement')) {
-      engaging = Math.min(engaging + 15, 50);
-      ugc = Math.min(ugc + 10, 25);
-      educational = Math.max(educational - 5, 20);
+      engaging = 40; educational = 25; promotional = 20; ugc = 15;
     } else if (contentGoals?.toLowerCase().includes('sales')) {
-      promotional = Math.min(promotional + 15, 35);
-      engaging = Math.min(engaging + 5, 40);
-      educational = Math.max(educational - 10, 20);
+      promotional = 40; educational = 20; engaging = 25; ugc = 15;
     }
     
     // Adjust based on brand voice
     if (brandVoice?.toLowerCase().includes('professional')) {
       educational = Math.min(educational + 10, 50);
       promotional = Math.max(promotional - 5, 15);
-      engaging = Math.max(engaging - 5, 30);
     } else if (brandVoice?.toLowerCase().includes('casual') || brandVoice?.toLowerCase().includes('fun')) {
-      engaging = Math.min(engaging + 15, 50);
-      ugc = Math.min(ugc + 10, 25);
-      educational = Math.max(educational - 10, 20);
-    } else if (brandVoice?.toLowerCase().includes('luxury') || brandVoice?.toLowerCase().includes('premium')) {
-      promotional = Math.min(promotional + 5, 25);
-      educational = Math.min(educational + 5, 40);
-      engaging = Math.max(engaging - 5, 30);
+      engaging = Math.min(engaging + 10, 45);
+      educational = Math.max(educational - 5, 20);
     }
     
     // Adjust based on posting frequency
     if (postFrequency?.toLowerCase().includes('daily') || postFrequency?.toLowerCase().includes('5')) {
-      ugc = Math.min(ugc + 15, 30);
-      engaging = Math.min(engaging + 5, 40);
-      promotional = Math.max(promotional - 10, 15);
-    } else if (postFrequency?.toLowerCase().includes('weekly') || postFrequency?.toLowerCase().includes('3')) {
+      ugc = Math.min(ugc + 5, 20);
+      promotional = Math.max(promotional - 5, 15);
+    } else if (postFrequency?.toLowerCase().includes('weekly') || postFrequency?.toLowerCase().includes('2')) {
       promotional = Math.min(promotional + 5, 25);
-      educational = Math.min(educational + 5, 40);
-      engaging = Math.max(engaging - 5, 30);
-    } else if (postFrequency?.toLowerCase().includes('monthly') || postFrequency?.toLowerCase().includes('1')) {
-      promotional = Math.min(promotional + 10, 30);
-      educational = Math.min(educational + 10, 45);
-      engaging = Math.max(engaging - 5, 25);
+      educational = Math.min(educational + 5, 45);
     }
     
     // Ensure percentages add up to 100
@@ -1084,7 +1281,7 @@ async function generateSocialMediaContent(input) {
   };
 
   // Determine posting schedule based on frequency and goals
-  const getPostingSchedule = (postFrequency, contentGoals, business, industry, targetAudience) => {
+  const getPostingSchedule = (postFrequency, contentGoals) => {
     const schedule = [];
     
     if (postFrequency?.toLowerCase().includes('daily') || postFrequency?.toLowerCase().includes('5')) {
@@ -1112,8 +1309,8 @@ async function generateSocialMediaContent(input) {
     return schedule;
   };
 
-  const contentMix = getContentMix(input.contentGoals, input.brandVoice, input.postFrequency, input.business, input.industry, input.targetAudience);
-  const postingSchedule = getPostingSchedule(input.postFrequency, input.contentGoals, input.business, input.industry, input.targetAudience);
+  const contentMix = getContentMix(input.contentGoals, input.brandVoice, input.postFrequency);
+  const postingSchedule = getPostingSchedule(input.postFrequency, input.contentGoals);
 
   // Generate platform-specific posts based on user selection
   const generatePlatformPosts = (platforms) => {
@@ -1131,42 +1328,6 @@ async function generateSocialMediaContent(input) {
   };
 
   const platformPosts = generatePlatformPosts(input.platforms);
-  
-  // Generate dynamic hashtag strategy based on business context
-  const generateHashtagStrategy = (business, industry, targetAudience) => {
-    const industryHashtags = {
-      'healthcare': ['#HealthcareInnovation', '#MedicalTech', '#PatientCare', '#HealthTech', '#MedicalInnovation'],
-      'e-commerce': ['#EcommerceTips', '#OnlineRetail', '#DigitalCommerce', '#RetailTech', '#ShoppingOnline'],
-      'technology': ['#TechInnovation', '#DigitalTransformation', '#TechTrends', '#InnovationHub', '#FutureTech'],
-      'hospitality': ['#HospitalityExcellence', '#GuestExperience', '#TravelIndustry', '#CustomerService', '#LuxuryTravel'],
-      'education': ['#EdTech', '#LearningInnovation', '#DigitalEducation', '#StudentSuccess', '#FutureOfLearning'],
-      'finance': ['#FinTech', '#FinancialServices', '#InvestmentTips', '#WealthManagement', '#FinancialPlanning']
-    };
-    
-    const audienceHashtags = {
-      'professionals': ['#ProfessionalDevelopment', '#CareerGrowth', '#BusinessTips', '#Leadership', '#Networking'],
-      'entrepreneurs': ['#Entrepreneurship', '#StartupLife', '#BusinessGrowth', '#Innovation', '#Success'],
-      'marketers': ['#DigitalMarketing', '#MarketingTips', '#BrandStrategy', '#ContentMarketing', '#GrowthHacking'],
-      'students': ['#StudentLife', '#Learning', '#Education', '#StudyTips', '#AcademicSuccess'],
-      'parents': ['#Parenting', '#FamilyLife', '#ParentingTips', '#FamilyTime', '#ParentingHacks']
-    };
-    
-    const brandedHashtags = [
-      `#${business?.replace(/\s+/g, '') || 'Business'}Excellence`,
-      `#${business?.replace(/\s+/g, '') || 'Business'}Innovation`,
-      `#${business?.replace(/\s+/g, '') || 'Business'}Success`,
-      `#${business?.replace(/\s+/g, '') || 'Business'}Community`,
-      `#${business?.replace(/\s+/g, '') || 'Business'}Journey`
-    ];
-    
-    return {
-      trending: industryHashtags[industry?.toLowerCase()] || ['#Innovation', '#Growth', '#Success', '#Excellence', '#Future'],
-      niche: audienceHashtags[targetAudience?.toLowerCase()] || ['#Professional', '#Quality', '#Service', '#Excellence', '#Innovation'],
-      branded: brandedHashtags
-    };
-  };
-  
-  const hashtagStrategy = generateHashtagStrategy(input.business, input.industry, input.targetAudience);
 
   const prompt = `Generate COMPLETELY UNIQUE and engaging social media content in JSON format for the following business (Request ID: ${Date.now()}):
 
@@ -1178,24 +1339,6 @@ Platforms: ${input.platforms?.join(', ') || 'All platforms'}
 Content Goals: ${input.contentGoals || 'Engagement and brand awareness'}
 Brand Voice: ${input.brandVoice || 'Professional'}
 Post Frequency: ${input.postFrequency || 'Daily'}
-
-ADDITIONAL REQUIREMENTS FOR API INTEGRATIONS:
-
-11. **API Integration Options**: Include scheduling and visual creation options:
-    - "autoSchedule": true/false (whether to auto-schedule posts)
-    - "platform": "publer" or "buffer" (which scheduling platform to use)
-    - "generateImages": true/false (whether to create Canva images)
-    - "imageStyle": "modern", "minimal", "bold", "professional" (visual style preference)
-
-12. **Export Options**: Include multiple export formats:
-    - "exportFormats": ["csv", "google_sheets", "publer", "buffer"]
-    - "scheduleType": "weekly", "monthly", "custom"
-    - "postingTimes": ["9:00 AM", "12:00 PM", "3:00 PM", "6:00 PM"]
-
-13. **Visual Content**: Include image generation specifications:
-    - "imageIdeas": ["specific image concept 1", "specific image concept 2"]
-    - "brandColors": ["#hex1", "#hex2", "#hex3"]
-    - "visualStyle": "detailed description of visual style"
 
 CRITICAL: You must create COMPLETELY UNIQUE content for this specific business. Do NOT use any generic templates or placeholder text.
 
@@ -1223,20 +1366,11 @@ For each platform, create:
 4. **posts.engagement**: Create specific engagement tactics for this business
 
 For strategy and analytics:
-5. **strategy.contentMix.description**: Write detailed, specific strategies for each content type that are tailored to this exact business. For example:
-   - Educational Content: "Share ${input.business || 'business'} insights about ${input.industry || 'industry'} trends, create how-to guides for ${input.targetAudience || 'audience'}, and provide expert tips that position ${input.business || 'business'} as a thought leader"
-   - Engaging Content: "Show behind-the-scenes of ${input.business || 'business'} operations, create interactive polls about ${input.industry || 'industry'} challenges, and share customer success stories that resonate with ${input.targetAudience || 'audience'}"
-   - Promotional Content: "Highlight ${input.business || 'business'} unique value propositions, showcase customer testimonials, and promote special offers that appeal to ${input.targetAudience || 'audience'}"
-   - User-Generated Content: "Encourage ${input.targetAudience || 'audience'} to share their experiences with ${input.business || 'business'}, repost customer reviews, and create community challenges"
-
-6. **strategy.postingSchedule.times**: Give specific times for each day based on ${input.industry || 'industry'} best practices
-7. **strategy.postingSchedule.contentType**: Create specific content types for each day that align with ${input.business || 'business'} goals
-8. **strategy.hashtagStrategy**: Generate hashtags specific to ${input.business || 'business'}:
-   - trending: 3-5 trending hashtags in ${input.industry || 'industry'}
-   - niche: 3-5 niche hashtags specific to ${input.targetAudience || 'audience'}
-   - branded: 3-5 branded hashtags unique to ${input.business || 'business'}
-
-9. **analytics**: Create realistic projections for ${input.business || 'business'} based on ${input.industry || 'industry'} and ${input.targetAudience || 'audience'}:
+5. **strategy.contentMix.description**: Write detailed strategies specific to this business
+6. **strategy.postingSchedule.times**: Give specific times for each day
+7. **strategy.postingSchedule.contentType**: Create specific content types for this business
+8. **strategy.hashtagStrategy**: Generate hashtags specific to this business
+9. **analytics**: Create realistic projections for this specific business
    - **expectedReach**: Return ONLY a number range like "5,000-8,000" or "10k-15k". NO explanations.
    - **engagementRate**: Return ONLY a percentage range like "8-12%" or "15-20%". NO explanations.
    - **bestPerformingContent**: Return ONLY the content type name (Educational, Engaging, Promotional, or UGC). NO explanations.
@@ -1294,27 +1428,17 @@ ${platformPosts}
       }
     ],
     "postingSchedule": ${JSON.stringify(postingSchedule)},
-    "hashtagStrategy": ${JSON.stringify(hashtagStrategy)}
+    "hashtagStrategy": {
+      "trending": [],
+      "niche": [],
+      "branded": []
+    }
   },
   "analytics": {
     "expectedReach": "",
     "engagementRate": "",
     "bestPerformingContent": "",
     "growthProjection": ""
-  },
-  "apiIntegrations": {
-    "autoSchedule": true,
-    "platform": "publer",
-    "generateImages": true,
-    "imageStyle": "modern",
-    "exportFormats": ["csv", "google_sheets", "publer"],
-    "scheduleType": "weekly",
-    "postingTimes": ["9:00 AM", "12:00 PM", "3:00 PM", "6:00 PM"]
-  },
-  "visualContent": {
-    "imageIdeas": ["specific image concept 1", "specific image concept 2"],
-    "brandColors": ["#hex1", "#hex2", "#hex3"],
-    "visualStyle": "detailed description of visual style"
   }
 }
 
@@ -1331,13 +1455,13 @@ CRITICAL REQUIREMENTS:
 10. For ALL analytics fields (expectedReach, engagementRate, bestPerformingContent, growthProjection), return ONLY numbers/percentages/content type names. NO explanations or additional text.`;
 
   try {
-    console.log('ðŸ“¤ Making OpenAI API request...');
+    console.log('ðŸ"¤ Making OpenAI API request...');
     const response = await axios.post(
       'https://api.openai.com/v1/chat/completions',
       {
         model: 'gpt-4',
         messages: [
-          { role: 'system', content: 'You are an expert social media content creator and strategist. You MUST create COMPLETELY UNIQUE content for each business. NEVER use generic templates or placeholder text. Every piece of content must be specific to the exact business, industry, and target audience provided. CRITICAL: You MUST generate content for ALL selected platforms - each platform should have completely different, unique posts. For content strategy, you MUST provide detailed, actionable descriptions that mention the specific business name and industry. If you generate generic content or only one post, you are failing at your task.' },
+          { role: 'system', content: 'You are an expert social media content creator. You MUST create COMPLETELY UNIQUE content for each business. NEVER use generic templates or placeholder text. Every piece of content must be specific to the exact business, industry, and target audience provided. CRITICAL: You MUST generate content for ALL selected platforms - each platform should have completely different, unique posts. If you generate generic content or only one post, you are failing at your task.' },
           { role: 'user', content: prompt }
         ],
         max_tokens: 4000,
@@ -1353,7 +1477,7 @@ CRITICAL REQUIREMENTS:
 
     console.log('âœ… OpenAI API response received');
     const text = response.data.choices[0].message.content;
-    console.log('ðŸ“ Raw response length:', text.length);
+    console.log('ðŸ" Raw response length:', text.length);
     
     let output;
     try {
@@ -1361,7 +1485,7 @@ CRITICAL REQUIREMENTS:
       console.log('âœ… JSON parsed successfully');
       return output;
     } catch (parseError) {
-      console.log('âš ï¸ JSON parsing failed, trying to extract JSON...');
+      console.log('âš ï¸ JSON parsing failed, trying to extract JSON...');
       const match = text.match(/\{[\s\S]*\}/);
       if (match) {
         output = JSON.parse(match[0]);
@@ -1378,7 +1502,7 @@ CRITICAL REQUIREMENTS:
       console.error('Response status:', error.response.status);
       console.error('Response data:', error.response.data);
     }
-    console.log('ðŸ”„ Falling back to static data');
+    console.log('ðŸ"„ Falling back to static data');
     return getFallbackData('social-media', input);
   }
 }
@@ -1878,6 +2002,43 @@ Return ONLY valid JSON, no explanation.`;
 
 // Generate Ad Copy using OpenAI
 async function generateAdCopy(input) {
+  // Define platform formats for dynamic generation
+  const platformFormats = {
+    "google": ["Search", "Display", "Shopping"],
+    "facebook": ["Feed", "Stories", "Carousel"],
+    "instagram": ["Feed", "Stories", "Reels"],
+    "linkedin": ["Sponsored Content", "Message Ads", "Text Ads"],
+    "twitter": ["Promoted Tweets", "Promoted Accounts"],
+    "youtube": ["Video", "Display", "Overlay"]
+  };
+
+  // Build dynamic variations array based on selected platforms
+  const selectedPlatforms = input.platforms || ["google", "facebook", "instagram"];
+  const variations = [];
+  
+  selectedPlatforms.forEach(platformId => {
+    const platformName = platformId.charAt(0).toUpperCase() + platformId.slice(1);
+    const formats = platformFormats[platformId] || ["Feed"];
+    
+    formats.forEach(format => {
+      variations.push({
+        platform: platformName,
+        format: format,
+        headline: "",
+        description: "",
+        cta: "",
+        character_count: {
+          headline: format === "Search" ? 30 : 40,
+          description: format === "Search" ? 90 : 125
+        },
+        compliance_check: {
+          passed: true,
+          issues: []
+        }
+      });
+    });
+  });
+
   const prompt = `Generate high-converting ad copy in JSON format for the following requirements:
 
 Request ID: ${Date.now()}
@@ -1899,57 +2060,12 @@ IMPORTANT: All empty fields (empty strings "" and empty arrays []) MUST be fille
 CRITICAL FOR DYNAMIC CONTENT:
 - Performance predictions: Must vary based on product/audience (CTR: 0.5%-8%, CPC: $0.25-$5.00, Conversion Rate: 1%-15%)
 - All content must be completely unique for each generation
+- Generate variations for ALL ${variations.length} selected platforms and formats
 
 Generate a JSON object with this EXACT structure:
 
 {
-  "variations": [
-    {
-      "platform": "Facebook",
-      "format": "Feed",
-      "headline": "",
-      "description": "",
-      "cta": "",
-      "character_count": {
-        "headline": 40,
-        "description": 125
-      },
-      "compliance_check": {
-        "passed": true,
-        "issues": []
-      }
-    },
-    {
-      "platform": "Google Ads",
-      "format": "Search",
-      "headline": "",
-      "description": "",
-      "cta": "",
-      "character_count": {
-        "headline": 30,
-        "description": 90
-      },
-      "compliance_check": {
-        "passed": true,
-        "issues": []
-      }
-    },
-    {
-      "platform": "Instagram",
-      "format": "Feed",
-      "headline": "",
-      "description": "",
-      "cta": "",
-      "character_count": {
-        "headline": 40,
-        "description": 125
-      },
-      "compliance_check": {
-        "passed": true,
-        "issues": []
-      }
-    }
-  ],
+  "variations": ${JSON.stringify(variations, null, 2)},
   "performance_predictions": {
     "expected_ctr": "",
     "expected_cpc": "",
@@ -2041,9 +2157,15 @@ Return ONLY valid JSON, no explanation.`;
 // Generate Landing Page Optimization Analysis using OpenAI
 async function generateLandingPage(input) {
   try {
-    const prompt = `You are an expert landing page optimization analyst. Generate a comprehensive landing page optimization analysis for the following website:
+    // Determine if this is an analysis of existing page or creation of new content
+    const isExistingPage = input.url && input.url !== 'example.com';
+    const pageType = isExistingPage ? 'existing landing page' : 'new landing page content';
+    
+    const prompt = `You are an expert landing page optimization analyst and content creator. ${isExistingPage ? 
+      `Analyze the following existing website:` : 
+      `Create comprehensive content for a new landing page based on these requirements:`}
 
-URL: ${input.url || 'example.com'}
+${isExistingPage ? `URL: ${input.url}` : `Offer: ${input.offerDetails || 'Product/Service'}`}
 Industry: ${input.industry || 'General'}
 Goal: ${input.goal || 'Lead generation'}
 Target Audience: ${input.targetAudience || 'General audience'}
@@ -2569,7 +2691,16 @@ Return ONLY valid JSON, no explanation.`;
 
 // Generate Cold Outreach using OpenAI
 async function generateColdOutreach(input) {
-  const prompt = `You are an expert sales strategist and copywriter. Generate COMPLETELY UNIQUE, creative, and personalized cold outreach content in JSON format.
+  try {
+    console.log('🚀 Starting cold outreach generation...');
+    
+    // Check if OpenAI API key is available
+    if (!process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY === 'sk-...') {
+      console.log('⚠️ OpenAI API key not configured, using fallback data');
+      return getFallbackData('cold-outreach', input);
+    }
+
+    const prompt = `You are an expert sales strategist and copywriter. Generate COMPLETELY UNIQUE, creative, and personalized cold outreach content in JSON format.
 
 IMPORTANT: DO NOT use templates or replace placeholders. Create entirely new, creative content for each section based on the user's specific inputs.
 
@@ -2834,131 +2965,297 @@ Return ONLY valid JSON, no explanation.`;
     const match = text.match(/\{[\s\S]*\}/);
     output = match ? JSON.parse(match[0]) : getFallbackData('cold-outreach', input);
   }
+  
   return output;
+  
+  } catch (error) {
+    console.error('❌ Error in cold outreach generation:', error.message);
+    
+    // Return fallback data directly with the same structure
+    return {
+      _warning: "⚠️ This is static fallback content. For dynamic AI-generated content, please ensure your OpenAI API key is configured correctly.",
+      _aiGenerated: false,
+      personalizationElements: {
+        researchPoints: [
+          "Company size and structure analysis",
+          "Industry challenges and pain points",
+          "Role responsibilities and decision-making power",
+          "Recent company news and developments",
+          "Competitive landscape insights"
+        ],
+        commonGround: [
+          "Shared industry challenges and opportunities",
+          "Common business goals and objectives",
+          "Similar market positioning and strategies",
+          "Mutual professional interests and expertise",
+          "Common customer pain points and solutions"
+        ],
+        valuePropositions: [
+          "Increase operational efficiency by 40%",
+          "Reduce customer acquisition costs by 60%",
+          "Improve team productivity and collaboration",
+          "Streamline workflow processes and automation",
+          "Enhance customer satisfaction and retention"
+        ]
+      },
+      outreachMessages: [
+        {
+          platform: "LinkedIn",
+          message: "Hi [Name], I came across your profile and was impressed by your work in [Industry]. I've been helping companies like [Company] address similar challenges around [Pain Point]. Would love to share some insights that might be relevant to your current initiatives.",
+          subjectLine: "Quick thought on your industry approach",
+          content: "Hi [Name], I came across your profile and was impressed by your work in [Industry]. I've been helping companies like [Company] address similar challenges around [Pain Point]. Would love to share some insights that might be relevant to your current initiatives.",
+          timing: "Tuesday 10 AM or Wednesday 2 PM",
+          purpose: "Build authentic connection through shared insights",
+          followUpTrigger: "No response after 3 business days"
+        },
+        {
+          platform: "Email",
+          message: "Hi [Name], I hope this finds you well. I've been following your work in [Industry] and wanted to reach out about a solution that's helping companies like yours address [Pain Point]. Would you be open to a brief conversation about what we're seeing in the market?",
+          subjectLine: "Quick question about your approach to [Challenge]",
+          content: "Hi [Name], I hope this finds you well. I've been following your work in [Industry] and wanted to reach out about a solution that's helping companies like yours address [Pain Point]. Would you be open to a brief conversation about what we're seeing in the market?",
+          timing: "Tuesday 9 AM or Thursday 3 PM",
+          purpose: "Establish thought leadership connection",
+          followUpTrigger: "No response after 4 business days"
+        },
+        {
+          platform: "Twitter",
+          message: "Hey [Name]! Your recent insights on [Topic] really resonated with me. Been seeing similar patterns in [Industry] and would love to connect. What's your take on [Current Trend]?",
+          subjectLine: "Your insights on [Topic] got me thinking",
+          content: "Hey [Name]! Your recent insights on [Topic] really resonated with me. Been seeing similar patterns in [Industry] and would love to connect. What's your take on [Current Trend]?",
+          timing: "Monday 11 AM or Friday 1 PM",
+          purpose: "Engage through shared interests and trends",
+          followUpTrigger: "No response after 2 business days"
+        },
+        {
+          platform: "Phone",
+          script: "Hi [Name], this is [Your Name] calling. I came across your work at [Company] and was impressed by your approach to [Challenge]. I've been helping similar companies address this and wanted to share some insights. Do you have a moment to chat?",
+          subjectLine: "Quick call about [Company] and [Challenge]",
+          content: "Hi [Name], this is [Your Name] calling. I came across your work at [Company] and was impressed by your approach to [Challenge]. I've been helping similar companies address this and wanted to share some insights. Do you have a moment to chat?",
+          timing: "Tuesday 10 AM or Wednesday 2 PM",
+          purpose: "Direct engagement and relationship building",
+          followUpTrigger: "No response after 1 business day"
+        }
+      ],
+      personalizationTemplates: [
+        {
+          templateName: "Value-First Approach",
+          hook: "Reference recent company news or achievements",
+          personalization: "Mention specific role responsibilities and industry challenges",
+          valueProposition: "Focus on measurable outcomes and ROI",
+          callToAction: "Request brief conversation or share specific insights"
+        },
+        {
+          templateName: "Industry Expert Connection",
+          hook: "Share industry insights or market trends",
+          personalization: "Reference mutual connections or professional background",
+          valueProposition: "Highlight expertise and proven track record",
+          callToAction: "Offer to share case studies or best practices"
+        }
+      ],
+      followUpSequence: [
+        {
+          followUp1: "Hi [Name], just wanted to follow up on my previous message about [Topic]. I thought you might find this [Resource/Insight] interesting given your work in [Area].",
+          timing1: "3-5 business days after initial contact"
+        },
+        {
+          followUp2: "Hi [Name], I understand you're busy, but I wanted to share this quick insight about [Trend/Challenge] that might be relevant to [Company] right now.",
+          timing2: "1 week after first follow-up"
+        },
+        {
+          followUp3: "Hi [Name], this will be my final follow-up. I've enjoyed learning about your work at [Company]. If you're interested in [Topic] in the future, feel free to reach out.",
+          timing3: "2 weeks after second follow-up"
+        }
+      ],
+      bestPractices: {
+        do: [
+          "Personalize based on recent company news or achievements",
+          "Reference mutual connections or professional background",
+          "Focus on value and insights rather than sales pitch",
+          "Use appropriate timing and follow-up sequences",
+          "Maintain professional and authentic tone"
+        ],
+        dont: [
+          "Don't use generic templates or mass messaging",
+          "Don't focus solely on product features",
+          "Don't be pushy or aggressive in follow-ups",
+          "Don't ignore personalization opportunities",
+          "Don't send without proper research and preparation"
+        ],
+        timing: "Best times: Tuesday 10 AM, Wednesday 2 PM, Thursday 9 AM. Avoid: Monday mornings, Friday afternoons, holidays"
+      },
+      trackingMetrics: {
+        responseRate: "15-25% (vs industry average of 5-8%)",
+        conversionRate: "3-5% (vs industry average of 1-2%)",
+        successFactors: [
+          "Authentic personalization based on research",
+          "Value-first messaging approach",
+          "Strategic timing and follow-up sequences",
+          "Multi-channel touchpoint orchestration",
+          "Continuous optimization based on response patterns"
+        ]
+      },
+      optimizationTesting: {
+        subjectLineVariations: [
+          "Question-based: 'Quick question about your approach to [Challenge]'",
+          "Value-focused: 'Thought you'd find this [Insight] interesting'",
+          "Industry-specific: 'Your insights on [Topic] got me thinking'",
+          "Connection-based: 'Mutual connection and [Company] insights'",
+          "Trend-focused: 'Quick thought on [Current Trend] in [Industry]'"
+        ],
+        abTestingSuggestions: [
+          "Test emotional vs logical hooks in subject lines",
+          "Experiment with different personalization depths",
+          "Vary message length and complexity",
+          "Test different call-to-action urgency levels",
+          "Compare direct vs indirect value propositions"
+        ],
+        followUpStrategy: "Multi-touch sequence: Day 1 (initial), Day 3 (value-add), Day 7 (case study), Day 14 (final offer). Vary content and approach in each follow-up."
+      }
+    };
+  }
 }
 
 // Generate Reels Script using OpenAI
 async function generateReelsScript(input) {
-  const prompt = `You are an expert short-form video content creator specializing in viral Instagram Reels, TikTok, and YouTube Shorts. 
+  try {
+    console.log('🎬 Starting enhanced reels script generation...');
+    
+    // Check if OpenAI API key is available
+    if (!process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY === 'sk-...') {
+      console.log('⚠️ OpenAI API key not configured, using fallback data');
+      return getFallbackData('reels-scripts', input);
+    }
 
-Create COMPLETELY UNIQUE and engaging video scripts for the following requirements:
+    const prompt = `Generate engaging short-form video scripts in JSON format for the following requirements:
 
 Topic: ${input.topic || 'General topic'}
-Niche: ${input.niche || 'General'}
-Target Audience: ${input.targetAudience || 'General audience'}
-Content Type: ${input.contentType || 'Educational'}
+Platform: ${input.platform || 'Instagram Reels'}
 Duration: ${input.duration || '30 seconds'}
-Goal: ${input.goal || 'Engagement'}
-Tone: ${input.tone || 'Casual'}
+Style: ${input.style || 'Educational'}
 
-Generate a comprehensive JSON object with this EXACT structure:
+IMPORTANT: Generate COMPLETELY UNIQUE content for every section. Do NOT use generic templates or placeholder text. Create specific, detailed, and creative content that is tailored to this exact topic and audience.
+
+Generate a JSON object with this EXACT structure:
 
 {
-  "scripts": [
+  "scriptVariations": [
     {
-      "platform": "Instagram Reels",
-      "hook": "Create a unique, attention-grabbing hook that makes viewers stop scrolling",
-      "content": "Create a detailed, step-by-step script with scene breakdowns, timing, and engaging content that delivers value to the audience",
-      "cta": "Create a compelling call-to-action that encourages engagement",
-      "hashtags": ["Create 5-7 relevant, trending hashtags"],
-      "duration": "${input.duration || '30 seconds'}",
-      "engagement": "High (12-18%)"
+      "hook": "Create a COMPLETELY UNIQUE, attention-grabbing hook that stops scrolling",
+      "mainContent": "Create COMPLETELY UNIQUE main content points that deliver value",
+      "callToAction": "Create COMPLETELY UNIQUE call-to-action that drives engagement",
+      "visualCues": ["Create 3 COMPLETELY UNIQUE visual cues"],
+      "audioNotes": ["Create 2 COMPLETELY UNIQUE audio notes"]
     },
     {
-      "platform": "TikTok",
-      "hook": "Create a unique TikTok-style hook that's perfect for the platform",
-      "content": "Create a TikTok-optimized script with trending elements, challenges, or viral content structure",
-      "cta": "Create a TikTok-specific call-to-action",
-      "hashtags": ["Create 5-7 TikTok-specific trending hashtags"],
-      "duration": "${input.duration || '30 seconds'}",
-      "engagement": "Very High (15-25%)"
-    },
-    {
-      "platform": "YouTube Shorts",
-      "YouTube Shorts",
-      "hook": "Create a YouTube Shorts hook that encourages subscriptions",
-      "content": "Create a YouTube-optimized script with educational value and clear structure",
-      "cta": "Create a YouTube-specific call-to-action encouraging subscriptions",
-      "hashtags": ["Create 5-7 YouTube-appropriate hashtags"],
-      "duration": "${input.duration || '30 seconds'}",
-      "engagement": "High (8-15%)"
+      "hook": "Create a COMPLETELY UNIQUE, attention-grabbing hook variation",
+      "mainContent": "Create COMPLETELY UNIQUE main content points variation",
+      "callToAction": "Create COMPLETELY UNIQUE call-to-action variation",
+      "visualCues": ["Create 3 COMPLETELY UNIQUE visual cues"],
+      "audioNotes": ["Create 2 COMPLETELY UNIQUE audio notes"]
     }
   ],
-  "hooks": [
-    {
-      "category": "Question Hooks",
-      "examples": ["Create 5 unique question-based hooks that make viewers curious"]
+  "platformSpecific": {
+    "instagramReels": {
+      "script": "Create COMPLETELY UNIQUE Instagram Reels specific script",
+      "hashtags": ["Create 5 COMPLETELY UNIQUE hashtags"],
+      "trendingSounds": ["Create 3 COMPLETELY UNIQUE trending sound suggestions"],
+      "engagementTips": ["Create 3 COMPLETELY UNIQUE engagement tips"]
     },
-    {
-      "category": "POV Hooks",
-      "examples": ["Create 5 unique POV-style hooks that create relatability"]
+    "tiktok": {
+      "script": "Create COMPLETELY UNIQUE TikTok specific script",
+      "hashtags": ["Create 5 COMPLETELY UNIQUE hashtags"],
+      "trendingSounds": ["Create 3 COMPLETELY UNIQUE trending sound suggestions"],
+      "engagementTips": ["Create 3 COMPLETELY UNIQUE engagement tips"]
     },
-    {
-      "category": "Number Hooks",
-      "examples": ["Create 5 unique number-based hooks that promise specific value"]
-    },
-    {
-      "category": "Controversy Hooks",
-      "examples": ["Create 5 unique controversy-style hooks that challenge assumptions"]
+    "youtubeShorts": {
+      "script": "Create COMPLETELY UNIQUE YouTube Shorts specific script",
+      "hashtags": ["Create 5 COMPLETELY UNIQUE hashtags"],
+      "engagementTips": ["Create 3 COMPLETELY UNIQUE engagement tips"]
     }
-  ],
-  "trends": {
-    "trending": ["Create 10 unique trending content types for 2024"],
-    "sounds": ["Create 10 unique sound and audio recommendations"],
-    "effects": ["Create 10 unique visual effects and transitions"]
+  },
+  "visualElements": {
+    "transitions": ["Create 3 COMPLETELY UNIQUE transitions"],
+    "effects": ["Create 3 COMPLETELY UNIQUE effects"],
+    "textOverlays": ["Create 3 COMPLETELY UNIQUE text overlays"]
+  },
+  "audioGuidance": {
+    "backgroundMusic": "Create COMPLETELY UNIQUE background music recommendations",
+    "voiceoverStyle": "Create COMPLETELY UNIQUE voiceover style and tone",
+    "soundEffects": ["Create 2 COMPLETELY UNIQUE sound effects"]
   },
   "optimization": {
-    "bestTimes": ["Create 8 unique best posting times with specific reasoning"],
-    "captionTips": ["Create 10 unique caption writing tips"],
-    "engagementTactics": ["Create 10 unique engagement strategies"]
+    "titleSuggestions": ["Create 3 COMPLETELY UNIQUE title suggestions"],
+    "descriptionTemplates": ["Create 2 COMPLETELY UNIQUE description templates"],
+    "thumbnailIdeas": ["Create 3 COMPLETELY UNIQUE thumbnail ideas"]
+  },
+  "exportOptions": {
+    "pdfReady": true,
+    "copyableText": "Create COMPLETELY UNIQUE copyable text version of the script",
+    "descriptCompatible": "Create COMPLETELY UNIQUE Descript-compatible script format",
+    "canvaTemplate": "Create COMPLETELY UNIQUE Canva template instructions"
   }
 }
 
-IMPORTANT REQUIREMENTS:
-1. Generate COMPLETELY UNIQUE content for every section - no generic templates
-2. Make content specific to the topic, niche, and target audience provided
-3. Include current 2024 trends and best practices
-4. Create engaging, viral-worthy content that drives real engagement
-5. Return ONLY valid JSON, no explanations or additional text
-6. Make each script variation truly different and platform-optimized
+Create engaging, platform-optimized short-form video scripts that capture attention and drive engagement. Include platform-specific best practices and optimization tips. Return ONLY valid JSON, no explanation.`;
 
-Focus on creating content that will actually go viral and engage the specific audience mentioned.`;
-
-  try {
-  const response = await axios.post(
-    'https://api.openai.com/v1/chat/completions',
-    {
-      model: 'gpt-4',
-      messages: [
-          { 
-            role: 'system', 
-            content: 'You are an expert short-form video content creator with 10+ years of experience creating viral content for Instagram Reels, TikTok, and YouTube Shorts. You understand current trends, platform algorithms, and what makes content go viral in 2024. Always generate unique, creative content that drives real engagement.' 
-          },
-        { role: 'user', content: prompt }
-      ],
+    const response = await axios.post(
+      'https://api.openai.com/v1/chat/completions',
+      {
+        model: 'gpt-4',
+        messages: [
+          { role: 'system', content: 'You are an expert short-form video content creator that generates engaging scripts in JSON format. You MUST create COMPLETELY UNIQUE content for every request - no templates, no placeholders, no generic text. Use the user\'s inputs as creative inspiration to write authentic, compelling scripts that feel personal and genuine. Be creative, innovative, and original in your approach. Generate content that stands out and feels like it was written specifically for each unique scenario.' },
+          { role: 'user', content: prompt }
+        ],
         max_tokens: 4000,
         temperature: 0.8
-    },
-    {
-      headers: {
-        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
-        'Content-Type': 'application/json'
+      },
+      {
+        headers: {
+          'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+          'Content-Type': 'application/json'
+        }
       }
-    }
-  );
+    );
 
-  const text = response.data.choices[0].message.content;
-  let output;
-  try {
-    output = JSON.parse(text);
-  } catch (e) {
-      console.error('JSON parsing error:', e);
-    const match = text.match(/\{[\s\S]*\}/);
-    output = match ? JSON.parse(match[0]) : getFallbackData('reels-scripts', input);
-  }
-  return output;
+    const text = response.data.choices[0].message.content;
+    console.log('Reels Script AI Response:', text);
+    
+    let output;
+    try {
+      output = JSON.parse(text);
+      console.log('Reels Script Parsed Output:', JSON.stringify(output, null, 2));
+      
+      // Validate that all required fields are populated
+      const requiredFields = [
+        'scriptVariations', 'platformSpecific', 'visualElements', 'audioGuidance', 'optimization'
+      ];
+      
+      let hasEmptyFields = false;
+      for (const field of requiredFields) {
+        const value = output[field];
+        if (!value || (Array.isArray(value) && value.length === 0) || (typeof value === 'object' && Object.keys(value).length === 0)) {
+          console.log(`Empty field detected: ${field}`);
+          hasEmptyFields = true;
+        }
+      }
+      
+      if (hasEmptyFields) {
+        console.log('Empty fields detected, using fallback data');
+        output = getFallbackData('reels-scripts', input);
+      }
+      
+    } catch (e) {
+      console.error('JSON parsing error for reels script:', e);
+      const match = text.match(/\{[\s\S]*\}/);
+      output = match ? JSON.parse(match[0]) : getFallbackData('reels-scripts', input);
+    }
+    
+    return output;
+    
   } catch (error) {
-    console.error('OpenAI API error:', error);
+    console.error('❌ Error in reels script generation:', error.message);
+    
+    // Return fallback data directly with the same structure
     return getFallbackData('reels-scripts', input);
   }
 }
@@ -3319,7 +3616,7 @@ function getFallbackData(toolId, input) {
   
   // Add a warning to the output
   const fallbackWarning = {
-    _warning: "âš ï¸ This is static fallback content. For dynamic AI-generated content, please ensure your OpenAI API key is configured correctly.",
+    _warning: "âš ï¸ This is static fallback content. For dynamic AI-generated content, please ensure your OpenAI API key is configured correctly.",
     _aiGenerated: false
   };
   if (toolId === 'product-launch') {
@@ -3417,10 +3714,10 @@ function getFallbackData(toolId, input) {
         postlaunch: `Subject: How's ${input.productName || 'Product'} working for you?\n\nHi [First Name],\n\nWe hope you're loving ${input.productName || 'Product'}! We'd love to hear about your experience.\n\nAs a ${input.targetAudience || 'business user'}, your feedback is invaluable to us.\n\nWe're constantly improving ${input.productName || 'Product'} to stay ahead of competitors.\n\nShare your thoughts: [Feedback Link]\n\nBest regards,\nThe ${input.productName || 'Product'} Team`
       },
       socialMediaPosts: {
-        announcement: `ðŸš¨ BREAKING: ${input.productName || 'Product'} is launching!\n\nThe future of ${input.productType || 'SaaS'} is here!\n\nKey features:\nðŸ”¥ ${input.keyFeatures || 'Feature 1'}\nðŸ”¥ ${input.keyFeatures || 'Feature 2'}\nðŸ”¥ ${input.keyFeatures || 'Feature 3'}\n\nPerfect for: ${input.targetAudience || 'Business users'}\nPricing: ${input.pricing || '$99/month'}\n\n#${input.productName?.replace(/\s+/g, '') || 'Product'} #Launch #Innovation`,
-        countdown: `â° 3 DAYS until ${input.productName || 'Product'} launches!\n\nReady to transform your ${input.productType || 'SaaS'} experience?\n\nWhat to expect:\nâš¡ ${input.keyFeatures || 'Feature 1'}\nâš¡ ${input.keyFeatures || 'Feature 2'}\n\nSet your reminder! ðŸ“…\n\n#${input.productName?.replace(/\s+/g, '') || 'Product'} #Countdown`,
+        announcement: `ðŸš¨ BREAKING: ${input.productName || 'Product'} is launching!\n\nThe future of ${input.productType || 'SaaS'} is here!\n\nKey features:\nðŸ"¥ ${input.keyFeatures || 'Feature 1'}\nðŸ"¥ ${input.keyFeatures || 'Feature 2'}\nðŸ"¥ ${input.keyFeatures || 'Feature 3'}\n\nPerfect for: ${input.targetAudience || 'Business users'}\nPricing: ${input.pricing || '$99/month'}\n\n#${input.productName?.replace(/\s+/g, '') || 'Product'} #Launch #Innovation`,
+        countdown: `â° 3 DAYS until ${input.productName || 'Product'} launches!\n\nReady to transform your ${input.productType || 'SaaS'} experience?\n\nWhat to expect:\nâš¡ ${input.keyFeatures || 'Feature 1'}\nâš¡ ${input.keyFeatures || 'Feature 2'}\n\nSet your reminder! ðŸ"…\n\n#${input.productName?.replace(/\s+/g, '') || 'Product'} #Countdown`,
         launch: `ðŸŽ‰ ${input.productName || 'Product'} IS LIVE! ðŸŽ‰\n\nExperience the future of ${input.productType || 'SaaS'} today!\n\nLaunch Special: ${input.pricing || '$99/month'}\n\nGet started: [Link]\n\n#${input.productName?.replace(/\s+/g, '') || 'Product'} #LiveNow`,
-        testimonial: `ðŸ’¬ "${input.productName || 'Product'} changed everything!"\n\n"As a ${input.targetAudience || 'business user'}, this is exactly what I needed."\n\n- Happy Customer\n\n#${input.productName?.replace(/\s+/g, '') || 'Product'} #Success`
+        testimonial: `ðŸ'¬ "${input.productName || 'Product'} changed everything!"\n\n"As a ${input.targetAudience || 'business user'}, this is exactly what I needed."\n\n- Happy Customer\n\n#${input.productName?.replace(/\s+/g, '') || 'Product'} #Success`
       },
       pressRelease: `FOR IMMEDIATE RELEASE\n\n${input.productName?.toUpperCase() || 'PRODUCT'} REVOLUTIONIZES ${input.productType?.toUpperCase() || 'SAAS'} WITH INNOVATIVE SOLUTION\n\nGroundbreaking platform designed specifically for ${input.targetAudience || 'business users'}\n\n[City, Date] - [Company Name] today announced the launch of ${input.productName || 'Product'}, a revolutionary ${input.productType || 'SaaS platform'} that addresses critical market needs.\n\n"${input.launchGoals || 'Transform the industry'}" said [Company Spokesperson]. "This launch represents a significant milestone in our mission."\n\nKey innovations include:\nâ€¢ ${input.keyFeatures || 'Innovation 1'}\nâ€¢ ${input.keyFeatures || 'Innovation 2'}\nâ€¢ ${input.keyFeatures || 'Innovation 3'}\n\nThe platform differentiates itself from existing solutions by offering unique value propositions that competitors cannot match.\n\nAvailable starting ${input.launchDate || 'Q1 2024'} with pricing from ${input.pricing || '$99/month'}.\n\nAbout [Company Name]\n[Company description]\n\nMedia Contact:\n[Name]\n[Email]\n[Phone]\n\n###`,
       contentCalendar: [
@@ -3570,55 +3867,46 @@ function getFallbackData(toolId, input) {
         }
     };
   } else if (toolId === 'ad-copy') {
-    return {
-      ...fallbackWarning,
-      variations: [
-        {
-          platform: "Facebook",
-          format: "Feed",
-          headline: `Transform Your ${input.product || 'Business'} with Our Solution`,
-          description: `Discover how ${input.audience || 'thousands of professionals'} are achieving remarkable results with our ${input.product || 'solution'}. ${input.usp || 'Proven results'} guaranteed.`,
+    // Define platform formats for dynamic fallback generation
+    const platformFormats = {
+      "google": ["Search", "Display", "Shopping"],
+      "facebook": ["Feed", "Stories", "Carousel"],
+      "instagram": ["Feed", "Stories", "Reels"],
+      "linkedin": ["Sponsored Content", "Message Ads", "Text Ads"],
+      "twitter": ["Promoted Tweets", "Promoted Accounts"],
+      "youtube": ["Video", "Display", "Overlay"]
+    };
+
+    // Build dynamic variations array based on selected platforms
+    const selectedPlatforms = input.platforms || ["google", "facebook", "instagram"];
+    const variations = [];
+    
+    selectedPlatforms.forEach(platformId => {
+      const platformName = platformId.charAt(0).toUpperCase() + platformId.slice(1);
+      const formats = platformFormats[platformId] || ["Feed"];
+      
+      formats.forEach(format => {
+        variations.push({
+          platform: platformName,
+          format: format,
+          headline: `Transform Your ${input.product || 'Business'} with Our ${platformName} Solution`,
+          description: `Discover how ${input.audience || 'thousands of professionals'} are achieving remarkable results with our ${input.product || 'solution'} on ${platformName}. ${input.usp || 'Proven results'} guaranteed.`,
           cta: "Get Started Today",
           character_count: {
-            headline: 40,
-            description: 125
+            headline: format === "Search" ? 30 : 40,
+            description: format === "Search" ? 90 : 125
           },
           compliance_check: {
             passed: true,
             issues: []
           }
-        },
-        {
-          platform: "Google Ads",
-          format: "Search",
-          headline: `${input.product || 'Solution'} That Actually Works`,
-          description: `${input.usp || 'Proven'} ${input.product || 'solution'} for ${input.audience || 'businesses'}. See results in 30 days or money back.`,
-          cta: "Learn More",
-          character_count: {
-            headline: 30,
-            description: 90
-          },
-          compliance_check: {
-            passed: true,
-            issues: []
-          }
-        },
-        {
-          platform: "Instagram",
-          format: "Feed",
-          headline: `Revolutionary ${input.product || 'Solution'} for ${input.audience || 'Professionals'}`,
-          description: `Join ${input.audience || 'successful businesses'} who trust our ${input.product || 'solution'}. ${input.usp || 'Award-winning'} results guaranteed.`,
-          cta: "Shop Now",
-          character_count: {
-            headline: 40,
-            description: 125
-          },
-          compliance_check: {
-            passed: true,
-            issues: []
-          }
-        }
-      ],
+        });
+      });
+    });
+
+    return {
+      ...fallbackWarning,
+      variations: variations,
       performance_predictions: {
         expected_ctr: "2.5%",
         expected_cpc: "$1.25",
@@ -3656,6 +3944,166 @@ function getFallbackData(toolId, input) {
         primary_keywords: [`${input.product || 'solution'}`, `${input.audience || 'professional'}`, `${input.usp || 'results'}`],
         secondary_keywords: [`${input.product || 'service'}`, `${input.audience || 'business'}`, `${input.usp || 'quality'}`, `${input.product || 'tool'}`, `${input.audience || 'user'}`],
         keyword_density: 2.5
+      }
+    };
+  } else if (toolId === 'competitor-analysis') {
+    // Generate comprehensive competitor analysis fallback data
+    const yourBusiness = input.yourBusiness || 'Your Business';
+    const industry = input.industry || 'Business Industry';
+    const competitors = input.competitors || 'Competitor A, Competitor B, Competitor C';
+    const analysisFocus = input.analysisFocus || 'Marketing Strategy';
+    
+    return {
+      ...fallbackWarning,
+      competitorProfiles: [
+        {
+          competitorName: "Competitor A",
+          foundedYear: "2018",
+          strengths: [
+            "Strong brand recognition in the market",
+            "Established customer base with high retention",
+            "Advanced technology infrastructure",
+            "Strategic partnerships with key players"
+          ],
+          weaknesses: [
+            "Limited geographic presence",
+            "Higher pricing compared to competitors",
+            "Slow response to market changes",
+            "Complex product onboarding process"
+          ],
+          opportunities: [
+            "Expand into emerging markets",
+            "Develop mobile-first solutions",
+            "Partner with complementary services",
+            "Launch subscription-based pricing models"
+          ],
+          threats: [
+            "New market entrants with innovative solutions",
+            "Economic downturn affecting customer spending",
+            "Regulatory changes in the industry",
+            "Technology disruption from AI and automation"
+          ],
+          marketPosition: "Market Challenger",
+          uniqueValueProposition: "Premium quality with personalized customer service",
+          revenue: "$25M annually",
+          employeeCount: "150+ employees",
+          keyProducts: ["Core Platform", "Mobile App", "Analytics Dashboard", "API Services"],
+          socialFollowers: {
+            facebook: "45.2K",
+            twitter: "12.8K",
+            linkedin: "8.9K",
+            instagram: "23.1K"
+          },
+          websiteTraffic: "125K monthly visitors",
+          seoScore: "78/100",
+          domainAuthority: "45"
+        },
+        {
+          competitorName: "Competitor B",
+          foundedYear: "2020",
+          strengths: [
+            "Innovative product features",
+            "Agile development methodology",
+            "Strong social media presence",
+            "Competitive pricing strategy"
+          ],
+          weaknesses: [
+            "Limited funding and resources",
+            "Small team size affecting scalability",
+            "Less established brand recognition",
+            "Limited customer support hours"
+          ],
+          opportunities: [
+            "Secure additional funding for growth",
+            "Expand product feature set",
+            "Build strategic partnerships",
+            "Enter untapped market segments"
+          ],
+          threats: [
+            "Larger competitors acquiring market share",
+            "Economic challenges affecting growth",
+            "Talent acquisition difficulties",
+            "Rapid technology changes"
+          ],
+          marketPosition: "Market Niche",
+          uniqueValueProposition: "Affordable innovation with modern UX design",
+          revenue: "$8M annually",
+          employeeCount: "45 employees",
+          keyProducts: ["SaaS Platform", "Mobile Solutions", "Integration Tools"],
+          socialFollowers: {
+            facebook: "18.7K",
+            twitter: "6.3K",
+            linkedin: "4.2K",
+            instagram: "15.8K"
+          },
+          websiteTraffic: "67K monthly visitors",
+          seoScore: "65/100",
+          domainAuthority: "32"
+        }
+      ],
+      swotAnalysis: {
+        yourStrengths: [
+          "Unique value proposition in the market",
+          "Strong customer relationships and loyalty",
+          "Innovative product development approach",
+          "Experienced team with industry expertise"
+        ],
+        yourWeaknesses: [
+          "Limited marketing budget compared to competitors",
+          "Smaller team size affecting development speed",
+          "Less brand recognition in the market",
+          "Limited geographic presence"
+        ],
+        opportunities: [
+          "Growing market demand for your solutions",
+          "Technology advancements enabling new features",
+          "Strategic partnerships with complementary services",
+          "Untapped market segments and demographics"
+        ],
+        threats: [
+          "Large competitors entering your market space",
+          "Economic uncertainty affecting customer decisions",
+          "Rapid technology changes requiring adaptation",
+          "Regulatory changes impacting business operations"
+        ]
+      },
+      competitiveAdvantages: {
+        priceAdvantage: "Competitive pricing with better value for money",
+        qualityAdvantage: "Superior product quality and reliability",
+        serviceAdvantage: "Exceptional customer service and support",
+        innovationAdvantage: "Continuous innovation and feature updates"
+      },
+      marketGaps: [
+        "Underserved customer segments in the market",
+        "Gaps in competitor product offerings",
+        "Opportunities for improved customer experience",
+        "Potential for new product categories"
+      ],
+      strategicRecommendations: [
+        {
+          recommendation: "Focus on niche market differentiation",
+          impact: "High - Establish unique market position",
+          effort: "Medium - Requires strategic planning and execution",
+          timeline: "6-12 months"
+        },
+        {
+          recommendation: "Invest in customer success and retention",
+          impact: "High - Improve customer lifetime value",
+          effort: "Low - Leverage existing relationships",
+          timeline: "3-6 months"
+        },
+        {
+          recommendation: "Develop strategic partnerships",
+          impact: "Medium - Expand market reach and capabilities",
+          effort: "Medium - Requires relationship building",
+          timeline: "6-9 months"
+        }
+      ],
+      performanceMetrics: {
+        marketShare: "12%",
+        customerSatisfaction: "4.6/5",
+        retentionRate: "87%",
+        growthRate: "23% annually"
       }
     };
   } else if (toolId === 'blog-to-video') {
@@ -4153,187 +4601,122 @@ Thanks for watching, and I'll see you in the next one!`,
       }
     };
   } else if (toolId === 'landing-page') {
-    // Generate comprehensive landing page optimization analysis fallback
-    const url = input.url || 'example.com';
-    const industry = input.industry || 'General';
-    const goal = input.goal || 'Lead generation';
+    // Generate comprehensive landing page content fallback that matches frontend expectations
+    const offerDetails = input.offerDetails || 'Product/Service';
     const targetAudience = input.targetAudience || 'General audience';
-    
-    // Generate domain from URL
-    const domain = url.replace(/^https?:\/\//, '').replace(/\/.*$/, '');
-    
-    // Industry-specific performance factors
-    const industryFactors = {
-      "saas": { avgConversionRate: 3.2, avgBounceRate: 45, avgSessionDuration: 180 },
-      "e-commerce": { avgConversionRate: 2.8, avgBounceRate: 52, avgSessionDuration: 150 },
-      "healthcare": { avgConversionRate: 4.1, avgBounceRate: 38, avgSessionDuration: 220 },
-      "finance": { avgConversionRate: 3.5, avgBounceRate: 42, avgSessionDuration: 200 },
-      "education": { avgConversionRate: 2.9, avgBounceRate: 48, avgSessionDuration: 160 },
-      "real estate": { avgConversionRate: 2.5, avgBounceRate: 55, avgSessionDuration: 140 }
-    };
-    
-    const factor = industryFactors[industry?.toLowerCase()] || industryFactors.saas;
-    
-    // Generate dynamic scores based on URL
-    const urlHash = domain.split('').reduce((a, b) => a + b.charCodeAt(0), 0);
-    const baseScore = 60 + (urlHash % 40); // Score between 60-100
+    const painPoints = input.painPoints || 'Common challenges';
+    const benefits = input.benefits || 'Key advantages';
     
     return {
       ...fallbackWarning,
-      overview: {
-        overallScore: baseScore,
-        conversionPotential: baseScore > 80 ? "Excellent" : baseScore > 70 ? "High" : baseScore > 60 ? "Good" : "Needs Improvement",
-        trafficQuality: baseScore > 75 ? "Excellent" : baseScore > 65 ? "Good" : "Needs Improvement",
-        userExperience: baseScore > 80 ? "Excellent" : baseScore > 70 ? "Good" : "Needs Improvement"
+      headline: {
+        main: `Transform Your ${offerDetails} Experience Today`,
+        subheadline: `Discover how ${targetAudience} are achieving remarkable results`,
+        tagline: `The future of ${offerDetails} is here`
       },
-      performance: {
-        loadTime: parseFloat((2.1 + Math.random() * 2.5).toFixed(1)),
-        mobileScore: Math.round(65 + Math.random() * 30),
-        desktopScore: Math.round(75 + Math.random() * 20),
-        seoScore: Math.round(70 + Math.random() * 25),
-        accessibilityScore: Math.round(60 + Math.random() * 35),
-        coreWebVitals: {
-          lcp: parseFloat((1.5 + Math.random() * 1.5).toFixed(1)),
-          fid: Math.round(20 + Math.random() * 50),
-          cls: parseFloat((0.05 + Math.random() * 0.1).toFixed(2))
+      heroSection: {
+        valueProposition: `Join thousands of ${targetAudience} who trust our ${offerDetails} to solve ${painPoints} and unlock ${benefits}`,
+        primaryCTA: "Get Started Today",
+        secondaryCTA: "Learn More",
+        heroImage: "hero-illustration.svg"
+      },
+      features: [
+        {
+          title: "Easy Integration",
+          description: "Seamlessly integrate with your existing workflow in minutes",
+          icon: "🔌"
+        },
+        {
+          title: "Proven Results",
+          description: "Trusted by thousands of businesses worldwide",
+          icon: "📈"
+        },
+        {
+          title: "24/7 Support",
+          description: "Get help whenever you need it with our expert team",
+          icon: "🛟"
+        },
+        {
+          title: "Advanced Analytics",
+          description: "Track performance and optimize with detailed insights",
+          icon: "📊"
         }
-      },
-      seoAnalysis: {
-        titleTag: {
-          current: `Current title tag for ${domain}`,
-          score: Math.round(70 + Math.random() * 20),
-          issues: ["Missing target keywords", "Title too long"],
-          suggestion: "Include primary keyword in title and keep under 60 characters"
+      ],
+      benefits: [
+        {
+          benefit: "Save Time & Money",
+          explanation: "Automate repetitive tasks and reduce operational costs by up to 40%"
         },
-        metaDescription: {
-          current: `Current meta description for ${domain}`,
-          score: Math.round(75 + Math.random() * 15),
-          issues: ["Missing call-to-action"],
-          suggestion: "Add compelling CTA to meta description"
+        {
+          benefit: "Increase Conversions",
+          explanation: "Optimize your funnel and boost conversion rates by 3x"
         },
-        headings: {
-          h1: {
-            current: `Current H1 tag for ${domain}`,
-            score: Math.round(65 + Math.random() * 25),
-            suggestion: "Optimize H1 with primary keyword and value proposition"
-          },
-          structure: "Poor header hierarchy - needs better H1 to H6 structure"
+        {
+          benefit: "Scale Effortlessly",
+          explanation: "Grow your business without worrying about technical limitations"
         }
-      },
-      conversionOptimization: {
-        headline: {
-          current: `Current headline for ${domain}`,
-          score: Math.round(70 + Math.random() * 20),
-          issues: ["Weak value proposition", "Missing urgency"],
-          suggestions: ["Strengthen value proposition", "Add urgency elements", "Include target audience benefit"]
+      ],
+      testimonials: [
+        {
+          quote: `"This ${offerDetails} completely transformed how we work. The results were immediate and impressive."`,
+          author: "Sarah Johnson",
+          title: "CEO, TechStart Inc.",
+          avatar: "sarah-j.jpg"
         },
-        cta: {
-          current: `Current CTA for ${domain}`,
-          score: Math.round(65 + Math.random() * 25),
-          issues: ["Poor placement", "Weak copy"],
-          suggestions: ["Move CTA above the fold", "Use action-oriented language", "Add urgency"]
-        },
-        valueProposition: {
-          score: Math.round(68 + Math.random() * 20),
-          issues: ["Unclear benefits", "Missing social proof"],
-          suggestions: ["Clarify unique value proposition", "Add customer testimonials", "Include specific benefits"]
+        {
+          quote: `"Finally, a solution that actually delivers on its promises. Our team loves it!"`,
+          author: "Mike Chen",
+          title: "Marketing Director",
+          avatar: "mike-c.jpg"
         }
+      ],
+      cta: {
+        primary: "Start Your Free Trial",
+        secondary: "Schedule a Demo",
+        urgency: "Limited Time Offer",
+        guarantee: "30-Day Money Back Guarantee"
       },
-      userExperience: {
-        navigation: {
-          score: Math.round(70 + Math.random() * 20),
-          issues: ["Complex menu structure", "Missing breadcrumbs"],
-          suggestions: ["Simplify navigation menu", "Add breadcrumb navigation", "Improve mobile menu"]
+      formCopy: {
+        title: "Get Started Today",
+        description: "Join thousands of satisfied customers",
+        fields: ["Name", "Email", "Company", "Phone"],
+        submitButton: "Start Free Trial",
+        privacyNote: "We respect your privacy and will never share your information"
+      },
+      faqs: [
+        {
+          question: `How quickly can I see results with ${offerDetails}?`,
+          answer: "Most customers see measurable results within the first 30 days of implementation."
         },
-        forms: {
-          score: Math.round(65 + Math.random() * 25),
-          issues: ["Too many fields", "Poor validation"],
-          suggestions: ["Reduce form fields", "Add inline validation", "Improve error messages"]
+        {
+          question: "What kind of support do you provide?",
+          answer: "We offer 24/7 customer support, comprehensive documentation, and personalized onboarding."
         },
-        trust: {
-          score: Math.round(68 + Math.random() * 20),
-          issues: ["Missing testimonials", "No security badges"],
-          suggestions: ["Add customer testimonials", "Display security badges", "Include trust signals"]
+        {
+          question: "Can I cancel anytime?",
+          answer: "Yes, you can cancel your subscription at any time with no questions asked."
         }
-      },
-      recommendations: {
-        immediate: [
-          {
-            task: "Optimize Page Load Speed",
-            priority: "High",
-            impact: "High",
-            effort: "Medium",
-            description: `Reduce load time from ${(2.1 + Math.random() * 2.5).toFixed(1)}s to under 2s by compressing images and optimizing CSS for ${domain}`
-          },
-          {
-            task: "Improve Call-to-Action Placement",
-            priority: "High",
-            impact: "High",
-            effort: "Low",
-            description: `Optimize CTA button placement and messaging to better align with ${goal} objectives`
-          },
-          {
-            task: "Enhance Mobile Experience",
-            priority: "Medium",
-            impact: "Medium",
-            effort: "High",
-            description: `Improve mobile responsiveness and touch interactions for better ${targetAudience} engagement`
-          }
+      ],
+      socialProof: {
+        stats: [
+          { number: "10,000+", label: "Happy Customers" },
+          { number: "99.9%", label: "Uptime Guarantee" },
+          { number: "24/7", label: "Support Available" }
         ],
-        longTerm: [
-          {
-            task: "Implement A/B Testing Framework",
-            priority: "Medium",
-            impact: "High",
-            effort: "High",
-            description: `Establish comprehensive A/B testing for continuous optimization of ${goal} performance`
-          },
-          {
-            task: "Advanced Analytics Integration",
-            priority: "Low",
-            impact: "Medium",
-            effort: "High",
-            description: `Implement advanced analytics and personalization to better serve ${targetAudience}`
-          }
-        ]
+        logos: ["Company A", "Company B", "Company C"],
+        certifications: ["ISO 27001", "SOC 2", "GDPR Compliant"]
       },
-      projectedImprovements: {
-        conversionRate: {
-          current: `${(factor.avgConversionRate * (0.7 + Math.random() * 0.6)).toFixed(1)}%`,
-          projected: `${(factor.avgConversionRate * (1.3 + Math.random() * 0.4)).toFixed(1)}%`,
-          increase: "+50% improvement"
-        },
-        bounceRate: {
-          current: `${Math.round(factor.avgBounceRate * (0.8 + Math.random() * 0.4))}%`,
-          projected: `${Math.round(factor.avgBounceRate * (0.6 + Math.random() * 0.2))}%`,
-          improvement: "-22% reduction"
-        },
-        avgSessionDuration: {
-          current: `${Math.round(factor.avgSessionDuration * (0.7 + Math.random() * 0.6))}s`,
-          projected: `${Math.round(factor.avgSessionDuration * (1.4 + Math.random() * 0.6))}s`,
-          increase: "+55% increase"
-        }
+      designLayout: {
+        template: "Modern Single Page",
+        colorScheme: "Professional Blue & White",
+        typography: "Clean Sans-serif",
+        mobileOptimization: "Fully Responsive"
       },
-      competitorAnalysis: {
-        yourPosition: "Mid-tier",
-        averageScore: Math.round(70 + Math.random() * 20),
-        topPerformers: [
-          {
-            name: "CompetitorA.com",
-            score: Math.round(85 + Math.random() * 10),
-            strength: "Strong value proposition and clear pricing structure"
-          },
-          {
-            name: "CompetitorB.com",
-            score: Math.round(80 + Math.random() * 10),
-            strength: "Excellent mobile optimization and fast load times"
-          },
-          {
-            name: "CompetitorC.com",
-            score: Math.round(75 + Math.random() * 10),
-            strength: "Strong social proof and testimonials"
-          }
-        ]
+      seoElements: {
+        pageTitle: `${offerDetails} - Transform Your Business Today`,
+        metaDescription: `Discover how ${targetAudience} are achieving remarkable results with our ${offerDetails}. ${painPoints} solved, ${benefits} unlocked.`,
+        h1Tags: [`Transform Your ${offerDetails} Experience`, `Best ${offerDetails} for ${targetAudience}`],
+        keywords: [offerDetails.toLowerCase(), targetAudience.toLowerCase(), painPoints.toLowerCase(), benefits.toLowerCase()]
       }
     };
   } else if (toolId === 'local-seo') {
@@ -4519,809 +4902,621 @@ Thanks for watching, and I'll see you in the next one!`,
           ]
         }
       ]
-    };
 
-  } else if (toolId === 'cold-outreach') {
-    // Generate dynamic cold outreach fallback data
-    const targetRole = input.targetRole || 'Business Professional';
-    const industry = input.industry || 'Technology';
-    const companySize = input.companySize || 'Medium';
-    const painPoint = input.painPoint || 'Operational efficiency';
-    const valueProposition = input.valueProposition || 'Increase productivity by 40%';
-    const productService = input.productService || 'Business solution';
-    const campaignGoal = input.campaignGoal || 'Schedule demo';
-    const tone = input.tone || 'Professional';
-    
-    // Generate dynamic research points based on industry and role
-    const generateResearchPoints = (industry, role) => {
-      const industryChallenges = {
-        'Technology': ['Rapid technological changes', 'Cybersecurity threats', 'Talent acquisition', 'Digital transformation'],
-        'Healthcare': ['Regulatory compliance', 'Patient care optimization', 'Cost management', 'Technology integration'],
-        'Finance': ['Regulatory changes', 'Digital banking transformation', 'Risk management', 'Customer experience'],
-        'Manufacturing': ['Supply chain disruptions', 'Automation needs', 'Quality control', 'Cost optimization'],
-        'Retail': ['E-commerce competition', 'Customer experience', 'Inventory management', 'Omnichannel strategy']
-      };
-      
-      const roleChallenges = {
-        'CEO': ['Strategic growth', 'Market expansion', 'Operational efficiency', 'Competitive advantage'],
-        'VP of Marketing': ['Lead generation', 'Brand awareness', 'ROI measurement', 'Customer acquisition'],
-        'Sales Director': ['Revenue growth', 'Team performance', 'Pipeline management', 'Customer retention'],
-        'CTO': ['Technology infrastructure', 'Digital transformation', 'Security', 'Innovation'],
-        'Operations Manager': ['Process optimization', 'Cost reduction', 'Team productivity', 'Quality improvement']
-      };
-      
-      const challenges = [
-        ...(industryChallenges[industry] || industryChallenges['Technology']),
-        ...(roleChallenges[role] || roleChallenges['CEO'])
-      ];
-      
-      return challenges.slice(0, 5);
-    };
-    
-    // Generate dynamic value propositions
-    const generateValuePropositions = (industry, painPoint, valueProposition) => {
-      const baseProps = [
-        `Increase ${industry.toLowerCase()} efficiency by 40%`,
-        `Reduce operational costs by 30%`,
-        `Improve customer satisfaction by 50%`,
-        `Streamline ${painPoint.toLowerCase()} processes`,
-        `Generate 3x more qualified leads`
-      ];
-      
-      return baseProps.slice(0, 4);
-    };
-    
-    // Generate dynamic common ground elements
-    const generateCommonGround = (industry, role) => {
-      return [
-        `Both focused on ${industry} excellence and innovation`,
-        `Shared commitment to driving business growth and results`,
-        `Understanding of ${role} challenges and priorities`,
-        `Passion for delivering exceptional customer value`,
-        `Dedication to continuous improvement and optimization`
-      ];
-    };
-    
-    // Generate dynamic outreach messages
-    const generateOutreachMessages = (targetRole, industry, painPoint, valueProposition, tone) => {
-      const messages = [
-        {
-          platform: "LinkedIn",
-          message: `Hi [Name], I came across your recent insights on navigating the evolving ${industry} landscape, and your perspective really resonated with me. Your approach to tackling ${painPoint} challenges shows the kind of strategic thinking that separates industry leaders from followers. I've been working with companies facing similar hurdles and discovered some fascinating patterns that might be relevant to your current initiatives. Would love to share a case study that could offer valuable insights for your team.`,
-          subjectLine: "Your strategic insights caught my attention",
-          content: `Hi [Name], I came across your recent insights on navigating the evolving ${industry} landscape, and your perspective really resonated with me. Your approach to tackling ${painPoint} challenges shows the kind of strategic thinking that separates industry leaders from followers. I've been working with companies facing similar hurdles and discovered some fascinating patterns that might be relevant to your current initiatives. Would love to share a case study that could offer valuable insights for your team.`,
-          timing: "Send on Tuesday or Wednesday between 9-11 AM",
-          purpose: "Build authentic connection through shared insights",
-          followUpTrigger: "No response after 3 business days"
-        },
-        {
-          platform: "Email",
-          subjectLine: "Quick thought on your industry approach",
-          message: `Hi [Name], I hope this finds you well. I've been following your work in ${industry} and was particularly struck by your innovative approach to addressing ${painPoint}. It's refreshing to see someone tackle these challenges with such strategic clarity. I wanted to reach out because we've been helping companies navigate similar waters, and I think there might be some valuable insights we could share. Would you be open to a brief conversation about what we're seeing in the market?`,
-          content: `Hi [Name], I hope this finds you well. I've been following your work in ${industry} and was particularly struck by your innovative approach to addressing ${painPoint}. It's refreshing to see someone tackle these challenges with such strategic clarity. I wanted to reach out because we've been helping companies navigate similar waters, and I think there might be some valuable insights we could share. Would you be open to a brief conversation about what we're seeing in the market?`,
-          timing: "Send on Tuesday or Wednesday between 10 AM-2 PM",
-          purpose: "Establish thought leadership connection",
-          followUpTrigger: "No response after 4 business days"
-        },
-        {
-          platform: "Twitter",
-          subjectLine: "Your industry insights are spot-on",
-          message: `Hi [Name], I've been following your insights on ${industry} trends and love your perspective on ${painPoint}. Your strategic thinking is exactly what the industry needs right now. We're helping companies achieve breakthrough results in this area - would love to connect and share some insights that might be valuable for your initiatives!`,
-          content: `Hi [Name], I've been following your insights on ${industry} trends and love your perspective on ${painPoint}. Your strategic thinking is exactly what the industry needs right now. We're helping companies achieve breakthrough results in this area - would love to connect and share some insights that might be valuable for your initiatives!`,
-          timing: "Send on Tuesday or Thursday between 1-3 PM",
-          purpose: "Engage through shared industry passion",
-          followUpTrigger: "No response after 2 business days"
-        },
-        {
-          platform: "Phone",
-          script: `Hi [Name], this is [Your Name] from [Company]. I've been following your work in ${industry} and was genuinely impressed by your strategic approach to ${painPoint}. Your insights show the kind of forward-thinking that drives real industry transformation. We've been working with companies facing similar challenges and have developed some innovative approaches that might be relevant to your current initiatives. Do you have 15 minutes for a conversation about what we're seeing in the market?`,
-          subjectLine: "Quick call about industry insights",
-          content: `Hi [Name], this is [Your Name] from [Company]. I've been following your work in ${industry} and was genuinely impressed by your strategic approach to ${painPoint}. Your insights show the kind of forward-thinking that drives real industry transformation. We've been working with companies facing similar challenges and have developed some innovative approaches that might be relevant to your current initiatives. Do you have 15 minutes for a conversation about what we're seeing in the market?`,
-          timing: "Call on Tuesday or Wednesday between 10 AM-2 PM",
-          purpose: "Direct value proposition discussion",
-          followUpTrigger: "No response after 5 business days"
-        }
-      ];
-      
-      return messages;
-    };
-    
-    // Generate dynamic analytics
-    const generateAnalytics = (industry, targetRole) => {
-      const baseRates = {
-        'Technology': { openRate: '18-25%', responseRate: '12-18%', conversionRate: '4-6%' },
-        'Healthcare': { openRate: '15-22%', responseRate: '10-15%', conversionRate: '3-5%' },
-        'Finance': { openRate: '12-18%', responseRate: '8-12%', conversionRate: '2-4%' },
-        'Manufacturing': { openRate: '16-23%', responseRate: '11-16%', conversionRate: '3-5%' },
-        'Retail': { openRate: '14-20%', responseRate: '9-14%', conversionRate: '2-4%' }
-      };
-      
-      const rates = baseRates[industry] || baseRates['Technology'];
-      
-      return {
-        responseRate: rates.responseRate,
-        conversionRate: rates.conversionRate,
-        successFactors: [
-          "Personalized research and targeting",
-          "Clear value proposition specific to ${industry}",
-          "Multiple touchpoint strategy",
-          "Timing optimization for ${targetRole}",
-          "Compelling call-to-action"
-        ]
-      };
-    };
-    
-    // Generate dynamic optimization suggestions
-    const generateOptimization = (industry, targetRole, painPoint) => {
-      return {
-        subjectLineVariations: [
-          `Quick question about ${industry} efficiency`,
-          `How ${industry} leaders are solving ${painPoint}`,
-          `Thought you might find this interesting`,
-          `${targetRole} insights for ${industry}`,
-          `Quick ${industry} question`
-        ],
-        abTestingSuggestions: [
-          "Test different personalization levels",
-          "Vary call-to-action urgency",
-          "Experiment with message length",
-          "Test different value propositions",
-          "Vary timing and frequency"
-        ],
-        followUpStrategy: "Send 3 follow-ups over 2 weeks: Day 1, Day 5, Day 14"
-      };
-    };
-    
-    // Generate dynamic best practices
-    const generateBestPractices = (industry, tone) => {
-      const practices = {
-        do: [
-          "Research the prospect's company and role thoroughly",
-          "Personalize messages with specific ${industry} insights",
-          "Focus on value proposition and benefits",
-          "Use professional but approachable tone",
-          "Include clear call-to-action"
-        ],
-        dont: [
-          "Send generic, template messages",
-          "Focus on product features instead of benefits",
-          "Use aggressive or pushy language",
-          "Send too many follow-ups",
-          "Ignore prospect's time constraints"
-        ],
-        timing: "Best send times: Tuesday-Thursday, 9-11 AM or 1-3 PM"
-      };
-      
-      return practices;
-    };
-    
-    return {
-      ...fallbackWarning,
-      personalizationElements: {
-        researchPoints: generateResearchPoints(industry, targetRole),
-        commonGround: generateCommonGround(industry, targetRole),
-        valuePropositions: generateValuePropositions(industry, painPoint, valueProposition)
-      },
-      outreachMessages: generateOutreachMessages(targetRole, industry, painPoint, valueProposition, tone),
-      personalizationTemplates: [
-        {
-          templateName: `${industry} Value-First Approach`,
-          hook: `I noticed your work in ${industry} and was impressed by your approach to ${painPoint}`,
-          personalization: `Given the challenges ${industry} professionals are facing`,
-          valueProposition: `We're helping companies achieve ${valueProposition}`,
-          callToAction: "Would you be open to a 15-minute call to discuss how this could benefit your team?"
-        },
-        {
-          templateName: `${targetRole} Problem-Solution Framework`,
-          hook: `I've been following your work in ${industry} and love your insights`,
-          personalization: `I understand ${targetRole}s are dealing with ${painPoint}`,
-          valueProposition: `We've been helping companies like yours achieve ${valueProposition}`,
-          callToAction: "Would love to share how this could benefit your team"
-        }
-      ],
-      followUpSequence: [
-        {
-          followUp1: `Hi [Name], I wanted to follow up on my previous message about ${valueProposition}. I understand you're busy, but I believe this could be valuable for your ${industry} initiatives.`,
-          timing1: "Send 3-5 days after initial contact"
-        },
-        {
-          followUp2: `Hi [Name], I know you're busy, but I wanted to share a quick case study of how we helped a ${industry} company achieve ${valueProposition}. Would this be relevant to your current challenges?`,
-          timing2: "Send 7-10 days after first follow-up"
-        },
-        {
-          followUp3: `Hi [Name], I understand if this isn't the right time, but I wanted to offer one final resource that might be valuable for your ${industry} initiatives. Would you like me to send it over?`,
-          timing3: "Send 14 days after second follow-up"
-        }
-      ],
-      bestPractices: generateBestPractices(industry, tone),
-      trackingMetrics: generateAnalytics(industry, targetRole),
-      optimizationTesting: generateOptimization(industry, targetRole, painPoint)
-    };
+    }
   }
-
-  // SEO Audit fallback
-  if (toolId === 'seo-audit') {
-    return {
-      ...fallbackWarning,
-      overallScore: 75,
-      summary: { 
-        score: 75, 
-        failed: 3, 
-        warnings: 5, 
-        passed: 10, 
-        criticalIssues: 1, 
-        improvementOpportunities: 8 
-      },
-      technicalSEO: {
-        metaTitle: { 
-          status: "warning", 
-          percentage: "70%", 
-          description: "Meta titles need optimization", 
-          details: "Some pages missing target keywords", 
-          howToFix: "Add primary keywords to all page titles" 
-        },
-        metaDescription: { 
-          status: "warning", 
-          percentage: "65%", 
-          description: "Meta descriptions need improvement", 
-          details: "Missing compelling CTAs", 
-          howToFix: "Write engaging descriptions with clear calls-to-action" 
-        },
-        headingStructure: { 
-          status: "pass", 
-          percentage: "85%", 
-          description: "Good heading hierarchy", 
-          details: "Proper H1-H6 structure", 
-          howToFix: "Maintain current heading structure" 
-        },
-        images: { 
-          status: "fail", 
-          percentage: "45%", 
-          description: "Images need optimization", 
-          details: "Missing alt text and compression", 
-          howToFix: "Add descriptive alt text and compress images" 
-        }
-      },
-      performance: {
-        pageSpeed: { 
-          status: "warning", 
-          percentage: "60%", 
-          description: "Page speed needs improvement", 
-          details: "Slow loading times detected", 
-          howToFix: "Optimize images and reduce server response time" 
-        }
-      },
-      security: {
-        https: { 
-          status: "pass", 
-          percentage: "95%", 
-          description: "HTTPS properly implemented", 
-          details: "SSL certificate active", 
-          howToFix: "Maintain current security setup" 
-        }
-      },
-      mobileUsability: {
-        responsiveDesign: { 
-          status: "pass", 
-          percentage: "80%", 
-          description: "Mobile-friendly design", 
-          details: "Responsive layout implemented", 
-          howToFix: "Test on more mobile devices" 
-        }
-      },
-      contentQuality: {
-        readability: { 
-          status: "warning", 
-          percentage: "70%", 
-          description: "Content readability needs improvement", 
-          details: "Some content too dense", 
-          howToFix: "Break up long paragraphs and add subheadings" 
-        }
-      },
-      accessibility: {
-        altText: { 
-          status: "fail", 
-          percentage: "40%", 
-          description: "Accessibility needs major improvement", 
-          details: "Many images missing alt text", 
-          howToFix: "Add descriptive alt text to all images" 
-        }
-      },
-      urlStructure: {
-        seoFriendly: { 
-          status: "pass", 
-          percentage: "85%", 
-          description: "Good URL structure", 
-          details: "Clean, descriptive URLs", 
-          howToFix: "Maintain current URL structure" 
-        }
-      },
-      siteArchitecture: {
-        internalLinking: { 
-          status: "warning", 
-          percentage: "65%", 
-          description: "Internal linking needs improvement", 
-          details: "Limited cross-page connections", 
-          howToFix: "Add more internal links between related pages" 
-        },
-        siteStructure: { 
-          status: "pass", 
-          percentage: "80%", 
-          description: "Good site structure", 
-          details: "Logical page hierarchy", 
-          howToFix: "Maintain current site structure" 
-        }
-      },
-      crossPageOptimization: {
-        keywordDistribution: { 
-          status: "warning", 
-          percentage: "60%", 
-          description: "Keyword distribution needs work", 
-          details: "Some pages lack target keywords", 
-          howToFix: "Distribute keywords evenly across all pages" 
-        },
-        contentStrategy: { 
-          status: "pass", 
-          percentage: "75%", 
-          description: "Good content strategy", 
-          details: "Consistent content approach", 
-          howToFix: "Continue current content strategy" 
-        }
-      },
-      recommendations: [
-        { 
-          category: "Technical SEO", 
-          priority: "high", 
-          title: "Optimize Meta Titles", 
-          description: "Add target keywords to all page titles", 
-          action: "Update meta titles with primary keywords", 
-          impact: "high", 
-          effort: "low", 
-          timeline: "1-2 weeks" 
-        },
-        { 
-          category: "Accessibility", 
-          priority: "critical", 
-          title: "Add Alt Text to Images", 
-          description: "Many images missing alt text", 
-          action: "Add descriptive alt text to all images", 
-          impact: "high", 
-          effort: "medium", 
-          timeline: "immediate" 
-        },
-        { 
-          category: "Performance", 
-          priority: "medium", 
-          title: "Improve Page Speed", 
-          description: "Pages loading slowly", 
-          action: "Optimize images and reduce server response time", 
-          impact: "medium", 
-          effort: "high", 
-          timeline: "1-3 months" 
-        }
-      ],
-      priorityActions: [
-        { 
-          category: "Accessibility", 
-          action: "Add alt text to all images", 
-          priority: "critical", 
-          effort: "medium", 
-          impact: "high" 
-        },
-        { 
-          category: "Technical SEO", 
-          action: "Optimize meta titles with keywords", 
-          priority: "high", 
-          effort: "low", 
-          impact: "high" 
-        },
-        { 
-          category: "Performance", 
-          action: "Optimize page loading speed", 
-          priority: "medium", 
-          effort: "high", 
-          impact: "medium" 
-        }
-      ]
-    };
-  }
-
-  // Default fallback for other tools
-  return {
-    ...fallbackWarning,
-    message: "Tool not implemented yet",
-    toolId,
-    input
-  };
 }
 
-// Generate SEO Audit for single page using OpenAI
-async function generateSEOAudit(input) {
-  console.log('🔍 Starting SEO Audit generation...');
-  console.log('📝 Input received:', input);
-  
-  const websiteUrl = input.url || input.websiteUrl || 'example.com';
-  const auditType = input.type || 'website-wide';
-  const industry = input.industry || 'general business';
-  
-  console.log('🌐 Website URL:', websiteUrl);
-  console.log('📊 Audit Type:', auditType);
-  console.log('🏢 Industry:', industry);
+// Import the productivity integration service
+const ProductivityIntegrationService = require('../services/productivityIntegrationService');
+const productivityService = new ProductivityIntegrationService();
 
-  const prompt = `You are an expert SEO analyst. Analyze the SEO quality of this entire website: ${websiteUrl}
-
-Industry: ${industry}
-Audit Type: ${auditType}
-
-Generate a comprehensive website-wide SEO audit report in JSON format. Focus on:
-- Technical SEO across multiple pages
-- Performance and Core Web Vitals
-- Security and HTTPS implementation
-- Mobile usability and responsiveness
-- Content quality and keyword optimization
-- Accessibility and user experience
-- Site architecture and internal linking
-- Cross-page optimization strategies
-
-Return a JSON object with this structure:
-{
-  "overallScore": [number between 45-95],
-  "summary": {
-    "score": [same as overallScore],
-    "failed": [number between 1-5],
-    "warnings": [number between 2-8],
-    "passed": [number between 5-15]
-  },
-  "pageAnalysis": {
-    "title": {
-      "status": "pass|warning|fail",
-      "score": [percentage],
-      "current": "[current title if provided]",
-      "recommendation": "[specific recommendation]"
-    },
-    "metaDescription": {
-      "status": "pass|warning|fail", 
-      "score": [percentage],
-      "current": "[current description if provided]",
-      "recommendation": "[specific recommendation]"
-    },
-    "headings": {
-      "status": "pass|warning|fail",
-      "score": [percentage],
-      "current": "[current heading structure]",
-      "recommendation": "[specific recommendation]"
-    },
-    "content": {
-      "status": "pass|warning|fail",
-      "score": [percentage],
-      "current": "[content quality assessment]",
-      "recommendation": "[specific recommendation]"
-    }
-  },
-  "recommendations": [
-    {
-      "priority": "high|medium|low",
-      "category": "[category]",
-      "action": "[specific action item]",
-      "impact": "high|medium|low",
-      "effort": "high|medium|low"
-    }
-  ],
-  "quickWins": [
-    "[specific quick win 1]",
-    "[specific quick win 2]",
-    "[specific quick win 3]"
-  ]
-}
-
-IMPORTANT: Generate REAL, UNIQUE content for every field. Do NOT use templates or placeholders. Make everything specific to ${websiteUrl} and the ${industry} industry. Return ONLY valid JSON, no explanation.`;
-
+// Product Launch Productivity Integration Routes
+router.post('/productivity/calendar', async (req, res) => {
   try {
-    console.log('🚀 Making OpenAI API call...');
-    console.log('🔑 OpenAI API Key available:', !!process.env.OPENAI_API_KEY);
+    const { launchData, calendarType = 'google' } = req.body;
     
-    const response = await axios.post(
-      'https://api.openai.com/v1/chat/completions',
-      {
-        model: 'gpt-4',
-        messages: [
-          { 
-            role: 'system', 
-            content: 'You are an expert SEO analyst specializing in comprehensive website-wide SEO audits. You analyze entire websites and provide detailed, actionable insights across all SEO aspects. Return ONLY valid JSON.' 
-          },
-          { role: 'user', content: prompt }
-        ],
-        max_tokens: 3000,
-        temperature: 0.7
-      },
-      {
-        headers: {
-          'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
-          'Content-Type': 'application/json'
-        }
+    if (!launchData) {
+      return res.status(400).json({ error: 'Launch data is required' });
+    }
+
+    let result;
+    switch (calendarType) {
+      case 'google':
+        result = await productivityService.createGoogleCalendarEvents(launchData);
+        break;
+      case 'ical':
+        result = productivityService.generateICalFile(launchData);
+        break;
+      default:
+        return res.status(400).json({ error: 'Invalid calendar type. Use "google" or "ical"' });
+    }
+
+    res.json(result);
+  } catch (error) {
+    console.error('Calendar integration error:', error.message);
+    res.status(500).json({ 
+      error: 'Failed to create calendar events',
+      details: error.message 
+    });
+  }
+});
+
+router.post('/productivity/notion', async (req, res) => {
+  try {
+    const { launchData } = req.body;
+    
+    if (!launchData) {
+      return res.status(400).json({ error: 'Launch data is required' });
+    }
+
+    const result = await productivityService.exportToNotion(launchData);
+    res.json(result);
+  } catch (error) {
+    console.error('Notion export error:', error.message);
+    res.status(500).json({ 
+      error: 'Failed to export to Notion',
+      details: error.message 
+    });
+  }
+});
+
+router.post('/productivity/google-sheets', async (req, res) => {
+  try {
+    const { launchData } = req.body;
+    
+    if (!launchData) {
+      return res.status(400).json({ error: 'Launch data is required' });
+    }
+
+    const result = await productivityService.exportToGoogleSheets(launchData);
+    res.json(result);
+  } catch (error) {
+    console.error('Google Sheets export error:', error.message);
+    res.status(500).json({ 
+      error: 'Failed to export to Google Sheets',
+      details: error.message 
+    });
+  }
+});
+
+router.post('/productivity/clickup', async (req, res) => {
+  try {
+    const { launchData } = req.body;
+    
+    if (!launchData) {
+      return res.status(400).json({ error: 'Launch data is required' });
+    }
+
+    const result = await productivityService.exportToClickUp(launchData);
+    res.json(result);
+  } catch (error) {
+    console.error('ClickUp export error:', error.message);
+    res.status(500).json({ 
+      error: 'Failed to export to ClickUp',
+      details: error.message 
+    });
+  }
+});
+
+router.get('/productivity/integrations', (req, res) => {
+  try {
+    const availableIntegrations = productivityService.getAvailableIntegrations();
+    res.json({
+      success: true,
+      integrations: availableIntegrations,
+      setupInstructions: {
+        googleCalendar: 'Set GOOGLE_CALENDAR_API_KEY in environment variables',
+        googleSheets: 'Set GOOGLE_SHEETS_API_KEY in environment variables',
+        notion: 'Set NOTION_API_KEY and NOTION_DATABASE_ID in environment variables',
+        clickUp: 'Set CLICKUP_API_KEY and CLICKUP_WORKSPACE_ID in environment variables',
+        outlook: 'Set OUTLOOK_CLIENT_ID and OUTLOOK_CLIENT_SECRET in environment variables'
       }
+    });
+  } catch (error) {
+    console.error('Integrations check error:', error.message);
+    res.status(500).json({ 
+      error: 'Failed to check integrations',
+      details: error.message 
+    });
+  }
+});
+
+// Import the video generation service
+const VideoGenerationService = require('../services/videoGenerationService');
+const videoService = new VideoGenerationService();
+
+// Blog-to-Video Video Generation Routes
+router.post('/video/scrape-blog', async (req, res) => {
+  try {
+    const { url } = req.body;
+    
+    if (!url) {
+      return res.status(400).json({ error: 'Blog URL is required' });
+    }
+
+    const result = await videoService.scrapeBlogContent(url);
+    res.json(result);
+  } catch (error) {
+    console.error('Blog scraping error:', error.message);
+    res.status(500).json({ 
+      error: 'Failed to scrape blog content',
+      details: error.message 
+    });
+  }
+});
+
+router.post('/video/pictory', async (req, res) => {
+  try {
+    const { scriptData, options = {} } = req.body;
+    
+    if (!scriptData) {
+      return res.status(400).json({ error: 'Script data is required' });
+    }
+
+    const result = await videoService.generateVideoWithPictory(scriptData, options);
+    res.json(result);
+  } catch (error) {
+    console.error('Pictory integration error:', error.message);
+    res.status(500).json({ 
+      error: 'Failed to generate video with Pictory',
+      details: error.message 
+    });
+  }
+});
+
+router.post('/video/lumen5', async (req, res) => {
+  try {
+    const { scriptData, options = {} } = req.body;
+    
+    if (!scriptData) {
+      return res.status(400).json({ error: 'Script data is required' });
+    }
+
+    const result = await videoService.generateVideoWithLumen5(scriptData, options);
+    res.json(result);
+  } catch (error) {
+    console.error('Lumen5 integration error:', error.message);
+    res.status(500).json({ 
+      error: 'Failed to generate video with Lumen5',
+      details: error.message 
+    });
+  }
+});
+
+router.post('/video/youtube-upload', async (req, res) => {
+  try {
+    const { videoFile, metadata } = req.body;
+    
+    if (!metadata) {
+      return res.status(400).json({ error: 'Video metadata is required' });
+    }
+
+    const result = await videoService.uploadToYouTube(videoFile, metadata);
+    res.json(result);
+  } catch (error) {
+    console.error('YouTube upload error:', error.message);
+    res.status(500).json({ 
+      error: 'Failed to generate YouTube upload instructions',
+      details: error.message 
+    });
+  }
+});
+
+router.post('/video/export-mp4', async (req, res) => {
+  try {
+    const { scriptData, options = {} } = req.body;
+    
+    if (!scriptData) {
+      return res.status(400).json({ error: 'Script data is required' });
+    }
+
+    const result = await videoService.exportToMP4(scriptData, options);
+    res.json(result);
+  } catch (error) {
+    console.error('MP4 export error:', error.message);
+    res.status(500).json({ 
+      error: 'Failed to generate MP4 export instructions',
+      details: error.message 
+    });
+  }
+});
+
+router.post('/video/production-guide', async (req, res) => {
+  try {
+    const { scriptData } = req.body;
+    
+    if (!scriptData) {
+      return res.status(400).json({ error: 'Script data is required' });
+    }
+
+    const result = videoService.generateVideoProductionGuide(scriptData);
+    res.json({
+      success: true,
+      message: 'Video production guide generated',
+      guide: result
+    });
+  } catch (error) {
+    console.error('Production guide error:', error.message);
+    res.status(500).json({ 
+      error: 'Failed to generate production guide',
+      details: error.message 
+    });
+  }
+});
+
+router.get('/video/integrations', (req, res) => {
+  try {
+    const availableIntegrations = videoService.getAvailableIntegrations();
+    res.json({
+      success: true,
+      integrations: availableIntegrations,
+      setupInstructions: {
+        pictory: 'Set PICTORY_API_KEY in environment variables',
+        lumen5: 'Set LUMEN5_API_KEY in environment variables',
+        youtube: 'Set YOUTUBE_API_KEY, YOUTUBE_CLIENT_ID, and YOUTUBE_CLIENT_SECRET in environment variables',
+        urlScraping: 'Always available (puppeteer)'
+      }
+    });
+  } catch (error) {
+    console.error('Video integrations check error:', error.message);
+    res.status(500).json({ 
+      error: 'Failed to check video integrations',
+      details: error.message 
+    });
+  }
+});
+
+// ===== LOCAL SEO API ROUTES =====
+
+// Initialize Local SEO services
+const localSEOService = new LocalSEOService();
+const citationBuildingService = new CitationBuildingService();
+const localSEOAnalyticsService = new LocalSEOAnalyticsService();
+
+// GMB Profile Audit
+router.post('/local-seo/gmb-audit', async (req, res) => {
+  try {
+    const { businessName, location } = req.body;
+    
+    if (!businessName || !location) {
+      return res.status(400).json({ error: 'Business name and location are required' });
+    }
+
+    const auditResult = await localSEOService.auditGoogleMyBusiness(businessName, location);
+    res.json({
+      success: true,
+      message: 'GMB audit completed',
+      audit: auditResult
+    });
+  } catch (error) {
+    console.error('GMB audit error:', error.message);
+    res.status(500).json({ 
+      error: 'Failed to audit GMB profile',
+      details: error.message 
+    });
+  }
+});
+
+// Review Analysis
+router.post('/local-seo/review-analysis', async (req, res) => {
+  try {
+    const { businessName, location } = req.body;
+    
+    if (!businessName || !location) {
+      return res.status(400).json({ error: 'Business name and location are required' });
+    }
+
+    const reviewData = await localSEOService.analyzeReviews(businessName, location);
+    res.json({
+      success: true,
+      message: 'Review analysis completed',
+      reviews: reviewData
+    });
+  } catch (error) {
+    console.error('Review analysis error:', error.message);
+    res.status(500).json({ 
+      error: 'Failed to analyze reviews',
+      details: error.message 
+    });
+  }
+});
+
+// Citation Analysis
+router.post('/local-seo/citation-analysis', async (req, res) => {
+  try {
+    const { businessName, location, phone } = req.body;
+    
+    if (!businessName || !location) {
+      return res.status(400).json({ error: 'Business name and location are required' });
+    }
+
+    const citationData = await localSEOService.analyzeCitations(businessName, location, phone);
+    res.json({
+      success: true,
+      message: 'Citation analysis completed',
+      citations: citationData
+    });
+  } catch (error) {
+    console.error('Citation analysis error:', error.message);
+    res.status(500).json({ 
+      error: 'Failed to analyze citations',
+      details: error.message 
+    });
+  }
+});
+
+// Citation Building
+router.post('/local-seo/build-citations', async (req, res) => {
+  try {
+    const { businessData, method = 'manual' } = req.body;
+    
+    if (!businessData || !businessData.businessName || !businessData.location) {
+      return res.status(400).json({ error: 'Complete business data is required' });
+    }
+
+    let result;
+    if (method === 'brightlocal' && process.env.BRIGHTLOCAL_API_KEY) {
+      result = await citationBuildingService.buildCitationsWithBrightLocal(businessData);
+    } else {
+      result = await citationBuildingService.buildCitationsManually(businessData);
+    }
+
+    res.json({
+      success: true,
+      message: 'Citation building initiated',
+      result: result
+    });
+  } catch (error) {
+    console.error('Citation building error:', error.message);
+    res.status(500).json({ 
+      error: 'Failed to build citations',
+      details: error.message 
+    });
+  }
+});
+
+// Monitor Citation Progress
+router.get('/local-seo/citation-progress/:campaignId', async (req, res) => {
+  try {
+    const { campaignId } = req.params;
+    
+    if (!campaignId) {
+      return res.status(400).json({ error: 'Campaign ID is required' });
+    }
+
+    const progress = await citationBuildingService.monitorCitationProgress(campaignId);
+    res.json({
+      success: true,
+      progress: progress
+    });
+  } catch (error) {
+    console.error('Citation progress error:', error.message);
+    res.status(500).json({ 
+      error: 'Failed to monitor citation progress',
+      details: error.message 
+    });
+  }
+});
+
+// Local SEO Performance Tracking
+router.post('/local-seo/track-rankings', async (req, res) => {
+  try {
+    const { businessName, location, keywords } = req.body;
+    
+    if (!businessName || !location || !keywords || !Array.isArray(keywords)) {
+      return res.status(400).json({ error: 'Business name, location, and keywords array are required' });
+    }
+
+    const rankingData = await localSEOAnalyticsService.trackLocalRankings(businessName, location, keywords);
+    res.json({
+      success: true,
+      message: 'Ranking tracking completed',
+      rankings: rankingData
+    });
+  } catch (error) {
+    console.error('Ranking tracking error:', error.message);
+    res.status(500).json({ 
+      error: 'Failed to track rankings',
+      details: error.message 
+    });
+  }
+});
+
+// GMB Performance Monitoring
+router.post('/local-seo/gmb-performance', async (req, res) => {
+  try {
+    const { businessName, location } = req.body;
+    
+    if (!businessName || !location) {
+      return res.status(400).json({ error: 'Business name and location are required' });
+    }
+
+    const performanceData = await localSEOAnalyticsService.monitorGMBPerformance(businessName, location);
+    res.json({
+      success: true,
+      message: 'GMB performance monitoring completed',
+      performance: performanceData
+    });
+  } catch (error) {
+    console.error('GMB performance error:', error.message);
+    res.status(500).json({ 
+      error: 'Failed to monitor GMB performance',
+      details: error.message 
+    });
+  }
+});
+
+// Competitor Performance Tracking
+router.post('/local-seo/competitor-tracking', async (req, res) => {
+  try {
+    const { businessName, competitors, location } = req.body;
+    
+    if (!businessName || !competitors || !Array.isArray(competitors) || !location) {
+      return res.status(400).json({ error: 'Business name, competitors array, and location are required' });
+    }
+
+    // Use target keywords from the business context if not provided
+    const keywords = req.body.keywords || ['local business', 'services', businessName.split(' ')[0]];
+
+    const competitorData = await localSEOAnalyticsService.trackCompetitorPerformance(competitors, location, keywords);
+    res.json({
+      success: true,
+      message: 'Competitor tracking completed',
+      tracking: {
+        competitors: competitorData,
+        metrics: ['ranking', 'reviews', 'response_time', 'content_frequency']
+      }
+    });
+  } catch (error) {
+    console.error('Competitor tracking error:', error.message);
+    res.status(500).json({ 
+      error: 'Failed to track competitors',
+      details: error.message 
+    });
+  }
+});
+
+// Generate Performance Report
+router.post('/local-seo/performance-report', async (req, res) => {
+  try {
+    const { businessName, location, keywords, competitors } = req.body;
+    
+    if (!businessName || !location || !keywords || !Array.isArray(keywords)) {
+      return res.status(400).json({ error: 'Business name, location, and keywords array are required' });
+    }
+
+    const report = await localSEOAnalyticsService.generatePerformanceReport(
+      businessName, 
+      location, 
+      keywords, 
+      competitors || []
     );
     
-    console.log('✅ OpenAI API call successful');
-    console.log('📊 Response status:', response.status);
-
-    const text = response.data.choices[0].message.content;
-    console.log('📝 Raw OpenAI response:', text.substring(0, 200) + '...');
-    
-    let output;
-    
-    try {
-      output = JSON.parse(text);
-      console.log('✅ SEO Audit AI generation successful');
-      console.log('📊 Parsed output keys:', Object.keys(output));
-    } catch (e) {
-      console.log('❌ SEO Audit AI generation failed, using fallback');
-      console.log('🔍 JSON parsing error:', e.message);
-      output = {
-        _warning: "AI generation failed - using fallback data",
-        overallScore: 75,
-        summary: { score: 75, failed: 3, warnings: 5, passed: 10, criticalIssues: 1, improvementOpportunities: 8 },
-        technicalSEO: {
-          metaTitle: { status: "warning", percentage: "70%", description: "Meta titles need optimization", details: "Some pages missing target keywords", howToFix: "Add primary keywords to all page titles" },
-          metaDescription: { status: "warning", percentage: "65%", description: "Meta descriptions need improvement", details: "Missing compelling CTAs", howToFix: "Write engaging descriptions with clear calls-to-action" },
-          headingStructure: { status: "pass", percentage: "85%", description: "Good heading hierarchy", details: "Proper H1-H6 structure", howToFix: "Maintain current heading structure" },
-          images: { status: "fail", percentage: "45%", description: "Images need optimization", details: "Missing alt text and compression", howToFix: "Add descriptive alt text and compress images" }
-        },
-        performance: {
-          pageSpeed: { status: "warning", percentage: "60%", description: "Page speed needs improvement", details: "Slow loading times detected", howToFix: "Optimize images and reduce server response time" }
-        },
-        security: {
-          https: { status: "pass", percentage: "95%", description: "HTTPS properly implemented", details: "SSL certificate active", howToFix: "Maintain current security setup" }
-        },
-        mobileUsability: {
-          responsiveDesign: { status: "pass", percentage: "80%", description: "Mobile-friendly design", details: "Responsive layout implemented", howToFix: "Test on more mobile devices" }
-        },
-        contentQuality: {
-          readability: { status: "warning", percentage: "70%", description: "Content readability needs improvement", details: "Some content too dense", howToFix: "Break up long paragraphs and add subheadings" }
-        },
-        accessibility: {
-          altText: { status: "fail", percentage: "40%", description: "Accessibility needs major improvement", details: "Many images missing alt text", howToFix: "Add descriptive alt text to all images" }
-        },
-        urlStructure: {
-          seoFriendly: { status: "pass", percentage: "85%", description: "Good URL structure", details: "Clean, descriptive URLs", howToFix: "Maintain current URL structure" }
-        },
-        siteArchitecture: {
-          internalLinking: { status: "warning", percentage: "65%", description: "Internal linking needs improvement", details: "Limited cross-page connections", howToFix: "Add more internal links between related pages" },
-          siteStructure: { status: "pass", percentage: "80%", description: "Good site structure", details: "Logical page hierarchy", howToFix: "Maintain current site structure" }
-        },
-        crossPageOptimization: {
-          keywordDistribution: { status: "warning", percentage: "60%", description: "Keyword distribution needs work", details: "Some pages lack target keywords", howToFix: "Distribute keywords evenly across all pages" },
-          contentStrategy: { status: "pass", percentage: "75%", description: "Good content strategy", details: "Consistent content approach", howToFix: "Continue current content strategy" }
-        },
-        recommendations: [
-          { category: "Technical SEO", priority: "high", title: "Optimize Meta Titles", description: "Add target keywords to all page titles", action: "Update meta titles with primary keywords", impact: "high", effort: "low", timeline: "1-2 weeks" },
-          { category: "Accessibility", priority: "critical", title: "Add Alt Text to Images", description: "Many images missing alt text", action: "Add descriptive alt text to all images", impact: "high", effort: "medium", timeline: "immediate" },
-          { category: "Performance", priority: "medium", title: "Improve Page Speed", description: "Pages loading slowly", action: "Optimize images and reduce server response time", impact: "medium", effort: "high", timeline: "1-3 months" }
-        ],
-        priorityActions: [
-          { category: "Accessibility", action: "Add alt text to all images", priority: "critical", effort: "medium", impact: "high" },
-          { category: "Technical SEO", action: "Optimize meta titles with keywords", priority: "high", effort: "low", impact: "high" },
-          { category: "Performance", action: "Optimize page loading speed", priority: "medium", effort: "high", impact: "medium" }
-        ]
-      };
-    }
-    
-    console.log('🎯 SEO Audit function returning output:', output ? 'Success' : 'No output');
-    return output;
+    res.json({
+      success: true,
+      message: 'Performance report generated',
+      report: report
+    });
   } catch (error) {
-    console.error('❌ SEO Audit generation error:', error);
-    console.error('📝 Error details:', error.message, error.stack);
-    return {
-      _warning: "OpenAI API error - using fallback data",
-      overallScore: 75,
-      summary: { score: 75, failed: 3, warnings: 5, passed: 10, criticalIssues: 1, improvementOpportunities: 8 },
-      technicalSEO: {
-        metaTitle: { status: "warning", percentage: "70%", description: "Meta titles need optimization", details: "Some pages missing target keywords", howToFix: "Add primary keywords to all page titles" },
-        metaDescription: { status: "warning", percentage: "65%", description: "Meta descriptions need improvement", details: "Missing compelling CTAs", howToFix: "Write engaging descriptions with clear calls-to-action" },
-        headingStructure: { status: "pass", percentage: "85%", description: "Good heading hierarchy", details: "Proper H1-H6 structure", howToFix: "Maintain current heading structure" },
-        images: { status: "fail", percentage: "45%", description: "Images need optimization", details: "Missing alt text and compression", howToFix: "Add descriptive alt text and compress images" }
-      },
-      performance: {
-        pageSpeed: { status: "warning", percentage: "60%", description: "Page speed needs improvement", details: "Slow loading times detected", howToFix: "Optimize images and reduce server response time" }
-      },
-      security: {
-        https: { status: "pass", percentage: "95%", description: "HTTPS properly implemented", details: "SSL certificate active", howToFix: "Maintain current security setup" }
-      },
-      mobileUsability: {
-        responsiveDesign: { status: "pass", percentage: "80%", description: "Mobile-friendly design", details: "Responsive layout implemented", howToFix: "Test on more mobile devices" }
-      },
-      contentQuality: {
-        readability: { status: "warning", percentage: "70%", description: "Content readability needs improvement", details: "Some content too dense", howToFix: "Break up long paragraphs and add subheadings" }
-      },
-      accessibility: {
-        altText: { status: "fail", percentage: "40%", description: "Accessibility needs major improvement", details: "Many images missing alt text", howToFix: "Add descriptive alt text to all images" }
-      },
-      urlStructure: {
-        seoFriendly: { status: "pass", percentage: "85%", description: "Good URL structure", details: "Clean, descriptive URLs", howToFix: "Maintain current URL structure" }
-      },
-      siteArchitecture: {
-        internalLinking: { status: "warning", percentage: "65%", description: "Internal linking needs improvement", details: "Limited cross-page connections", howToFix: "Add more internal links between related pages" },
-        siteStructure: { status: "pass", percentage: "80%", description: "Good site structure", details: "Logical page hierarchy", howToFix: "Maintain current site structure" }
-      },
-      crossPageOptimization: {
-        keywordDistribution: { status: "warning", percentage: "60%", description: "Keyword distribution needs work", details: "Some pages lack target keywords", howToFix: "Distribute keywords evenly across all pages" },
-        contentStrategy: { status: "pass", percentage: "75%", description: "Good content strategy", details: "Consistent content approach", howToFix: "Continue current content strategy" }
-      },
-      recommendations: [
-        { category: "Technical SEO", priority: "high", title: "Optimize Meta Titles", description: "Add target keywords to all page titles", action: "Update meta titles with primary keywords", impact: "high", effort: "low", timeline: "1-2 weeks" },
-        { category: "Accessibility", priority: "critical", title: "Add Alt Text to Images", description: "Many images missing alt text", action: "Add descriptive alt text to all images", impact: "high", effort: "medium", timeline: "immediate" },
-        { category: "Performance", priority: "medium", title: "Improve Page Speed", description: "Pages loading slowly", action: "Optimize images and reduce server response time", impact: "medium", effort: "high", timeline: "1-3 months" }
-      ],
-      priorityActions: [
-        { category: "Accessibility", action: "Add alt text to all images", priority: "critical", effort: "medium", impact: "high" },
-        { category: "Technical SEO", action: "Optimize meta titles with keywords", priority: "high", effort: "low", impact: "high" },
-        { category: "Performance", action: "Optimize page loading speed", priority: "medium", effort: "high", impact: "medium" }
+    console.error('Performance report error:', error.message);
+    res.status(500).json({ 
+      error: 'Failed to generate performance report',
+      details: error.message 
+    });
+  }
+});
+
+// Content Calendar Generation
+router.post('/local-seo/content-calendar', async (req, res) => {
+  try {
+    const { businessName, businessType, location, primaryServices } = req.body;
+    
+    if (!businessName || !businessType || !location) {
+      return res.status(400).json({ error: 'Business name, type, and location are required' });
+    }
+
+    const calendar = await localSEOService.generateContentCalendar(businessName, businessType, location);
+    
+    // Add monthly themes and total posts count to match frontend expectations
+    const enhancedCalendar = {
+      ...calendar,
+      monthlyThemes: calendar.monthlyThemes || ['Local Business Focus', 'Service Highlights', 'Community Engagement'],
+      totalPosts: calendar.totalPosts || 30
+    };
+    
+    res.json({
+      success: true,
+      message: 'Content calendar generated',
+      calendar: enhancedCalendar
+    });
+  } catch (error) {
+    console.error('Content calendar error:', error.message);
+    res.status(500).json({ 
+      error: 'Failed to generate content calendar',
+      details: error.message 
+    });
+  }
+});
+
+// GMB Calendar Event Creation
+router.post('/local-seo/gmb-calendar', async (req, res) => {
+  try {
+    const { businessName, location, gmbEmail, businessType } = req.body;
+    
+    if (!businessName || !location || !gmbEmail) {
+      return res.status(400).json({ error: 'Business name, location, and GMB email are required' });
+    }
+
+    // Create event data from the request
+    const eventData = {
+      businessName,
+      location,
+      gmbEmail,
+      businessType,
+      eventType: 'content_post',
+      scheduledDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 1 week from now
+    };
+
+    const result = await localSEOService.createGMBCalendarEvent(businessName, eventData);
+    
+    // Generate a sample calendar structure for the response
+    const calendar = {
+      events: [result],
+      posts: [
+        {
+          type: 'weekly_update',
+          content: `Weekly update for ${businessName}`,
+          scheduledDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+        }
       ]
     };
-  }
-}
 
-// @route   POST /api/ai-tools/social-media/schedule
-// @desc    Schedule social media content with Publer/Buffer
-// @access  Private
-router.post("/social-media/schedule", auth, async (req, res) => {
-  try {
-    const { content, platform, schedule } = req.body;
-    const scheduler = new SocialMediaScheduler();
-    
-    let result;
-    if (platform === 'publer') {
-      result = await scheduler.scheduleWithPubler(content, schedule);
-    } else if (platform === 'buffer') {
-      result = await scheduler.scheduleWithBuffer(content, schedule);
-    } else {
-      return res.status(400).json({ message: "Invalid platform specified" });
-    }
-    
-    res.json({ success: true, result });
+    res.json({
+      success: true,
+      message: 'GMB calendar created',
+      calendar: calendar
+    });
   } catch (error) {
-    console.error("Social media scheduling error:", error);
-    res.status(500).json({ message: "Scheduling failed", error: error.message });
+    console.error('GMB calendar error:', error.message);
+    res.status(500).json({ 
+      error: 'Failed to create GMB calendar event',
+      details: error.message 
+    });
   }
 });
 
-// @route   POST /api/ai-tools/social-media/generate-images
-// @desc    Generate visual content with Canva
-// @access  Private
-router.post("/social-media/generate-images", auth, async (req, res) => {
+// Local SEO Integrations Check
+router.get('/local-seo/integrations', (req, res) => {
   try {
-    const { content, platform, style } = req.body;
-    const canvaService = new CanvaService();
-    
-    const image = await canvaService.createSocialMediaImage(content, platform, style);
-    const exports = await canvaService.exportDesign(image.id, ['png', 'jpg']);
-    
-    res.json({ success: true, image, exports });
-  } catch (error) {
-    console.error("Image generation error:", error);
-    res.status(500).json({ message: "Image generation failed", error: error.message });
-  }
-});
-
-// @route   POST /api/ai-tools/social-media/export
-// @desc    Export content in various formats
-// @access  Private
-router.post("/social-media/export", auth, async (req, res) => {
-  try {
-    const { content, format, platform } = req.body;
-    
-    let result;
-    if (format === 'csv') {
-      result = await exportToCSV(content);
-    } else if (format === 'google_sheets') {
-      result = await exportToGoogleSheets(content);
-    } else if (format === 'publer' || format === 'buffer') {
-      const scheduler = new SocialMediaScheduler();
-      result = await scheduler.autoScheduleWeekly(content, format);
-    }
-    
-    res.json({ success: true, result });
-  } catch (error) {
-    console.error("Export error:", error);
-    res.status(500).json({ message: "Export failed", error: error.message });
-  }
-});
-
-// @route   POST /api/ai-tools/social-media/auto-schedule
-// @desc    Auto-schedule weekly content with selected platform
-// @access  Private
-router.post("/social-media/auto-schedule", auth, async (req, res) => {
-  try {
-    const { contentArray, platform, scheduleType } = req.body;
-    const scheduler = new SocialMediaScheduler();
-    
-    let result;
-    if (scheduleType === 'weekly') {
-      result = await scheduler.autoScheduleWeekly(contentArray, platform);
-    } else if (scheduleType === 'monthly') {
-      // Generate monthly schedule
-      const monthlySchedule = scheduler.generateMonthlySchedule();
-      result = await scheduler.autoScheduleMonthly(contentArray, platform, monthlySchedule);
-    }
-    
-    res.json({ success: true, result });
-  } catch (error) {
-    console.error("Auto-scheduling error:", error);
-    res.status(500).json({ message: "Auto-scheduling failed", error: error.message });
-  }
-});
-
-// @route   GET /api/ai-tools/social-media/validate-credentials
-// @desc    Validate API credentials for scheduling platforms
-// @access  Private
-router.get("/social-media/validate-credentials", auth, async (req, res) => {
-  try {
-    const { platform } = req.query;
-    const scheduler = new SocialMediaScheduler();
-    const canvaService = new CanvaService();
-    
-    let result = {};
-    
-    if (platform === 'publer' || platform === 'buffer') {
-      result.scheduler = await scheduler.validateCredentials(platform);
-    } else if (platform === 'canva') {
-      result.canva = await canvaService.validateCredentials();
-    } else if (platform === 'all') {
-      result.publer = await scheduler.validateCredentials('publer');
-      result.buffer = await scheduler.validateCredentials('buffer');
-      result.canva = await canvaService.validateCredentials();
-    }
-    
-    res.json({ success: true, result });
-  } catch (error) {
-    console.error("Credential validation error:", error);
-    res.status(500).json({ message: "Validation failed", error: error.message });
-  }
-});
-
-// Helper function to export to CSV
-async function exportToCSV(content) {
-  try {
-    const csvData = content.map(post => {
-      return `${post.platform},${post.content},${post.hashtags.join(';')},${post.bestTime},${post.engagement}`;
-    }).join('\n');
-    
-    const csvHeader = 'Platform,Content,Hashtags,Best Time,Engagement\n';
-    const fullCSV = csvHeader + csvData;
-    
-    return {
-      format: 'csv',
-      data: fullCSV,
-      filename: `social_media_content_${new Date().toISOString().split('T')[0]}.csv`
+    const availableIntegrations = {
+      googleMyBusiness: !!process.env.GOOGLE_CLIENT_ID,
+      brightLocal: !!process.env.BRIGHTLOCAL_API_KEY,
+      semrush: !!process.env.SEMRUSH_API_KEY,
+      moz: !!process.env.MOZ_API_KEY,
+      yelp: !!process.env.YELP_API_KEY,
+      facebook: !!process.env.FACEBOOK_ACCESS_TOKEN
     };
-  } catch (error) {
-    console.error('CSV export error:', error);
-    throw error;
-  }
-}
 
-// Helper function to export to Google Sheets
-async function exportToGoogleSheets(content) {
-  try {
-    // This would integrate with Google Sheets API
-    // For now, return a structured format
-    const sheetData = {
-      format: 'google_sheets',
-      data: content.map(post => ({
-        platform: post.platform,
-        content: post.content,
-        hashtags: post.hashtags.join(', '),
-        bestTime: post.bestTime,
-        engagement: post.engagement
-      })),
-      filename: `social_media_content_${new Date().toISOString().split('T')[0]}.json`
-    };
-    
-    return sheetData;
+    res.json({
+      success: true,
+      integrations: availableIntegrations,
+      setupInstructions: {
+        googleMyBusiness: 'Set GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, and GOOGLE_REFRESH_TOKEN in environment variables',
+        brightLocal: 'Set BRIGHTLOCAL_API_KEY in environment variables',
+        semrush: 'Set SEMRUSH_API_KEY in environment variables',
+        moz: 'Set MOZ_API_KEY in environment variables',
+        yelp: 'Set YELP_API_KEY in environment variables',
+        facebook: 'Set FACEBOOK_ACCESS_TOKEN in environment variables'
+      }
+    });
   } catch (error) {
-    console.error('Google Sheets export error:', error);
-    throw error;
+    console.error('Local SEO integrations check error:', error.message);
+    res.status(500).json({ 
+      error: 'Failed to check Local SEO integrations',
+      details: error.message 
+    });
   }
-}
+});
 
-module.exports = router 
+module.exports = router;

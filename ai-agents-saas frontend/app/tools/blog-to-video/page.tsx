@@ -63,6 +63,7 @@ export default function BlogToVideoPage() {
   const [formData, setFormData] = useState({
     blogTitle: "",
     blogContent: "",
+    blogUrl: "", // New field for URL scraping
     videoStyle: "",
     targetPlatform: "",
     duration: "",
@@ -79,6 +80,35 @@ export default function BlogToVideoPage() {
   const handleInputChange = (name: string, value: string) => {
     setFormData((prev) => ({ ...prev, [name]: value }))
   }
+
+  // URL scraping functionality
+  const scrapeBlogUrl = async () => {
+    if (!formData.blogUrl) {
+      alert("Please enter a blog URL to scrape");
+      return;
+    }
+
+    try {
+      const response = await makeAuthenticatedRequest("/api/ai-tools/video/scrape-blog", {
+        method: "POST",
+        body: JSON.stringify({ url: formData.blogUrl })
+      });
+
+      if (response.success) {
+        setFormData(prev => ({
+          ...prev,
+          blogTitle: response.title || prev.blogTitle,
+          blogContent: response.content || prev.blogContent
+        }));
+        alert("✅ Blog content scraped successfully!");
+      } else {
+        alert(`⚠️ ${response.error || 'Failed to scrape blog content'}`);
+      }
+    } catch (error) {
+      console.error('Blog scraping error:', error);
+      alert('Failed to scrape blog content. Please try again.');
+    }
+  };
 
   const handleGenerate = async () => {
     if (!hasAccess) {
@@ -126,6 +156,154 @@ export default function BlogToVideoPage() {
       setIsGenerating(false)
     }
   }
+
+  // Video generation functions
+  const generateVideoWithPictory = async () => {
+    if (!result) return;
+
+    try {
+      const response = await makeAuthenticatedRequest("/api/ai-tools/video/pictory", {
+        method: "POST",
+        body: JSON.stringify({
+          scriptData: { ...result, blogTitle: formData.blogTitle },
+          options: {
+            visualStyle: formData.videoStyle || 'modern',
+            aspectRatio: '16:9',
+            resolution: '1080p'
+          }
+        })
+      });
+
+      if (response.success) {
+        alert(`✅ ${response.message}`);
+      } else {
+        // Download fallback template
+        if (response.fallback) {
+          const blob = new Blob([response.fallback.content], { type: response.fallback.type });
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = response.fallback.filename;
+          document.body.appendChild(a);
+          a.click();
+          window.URL.revokeObjectURL(url);
+          document.body.removeChild(a);
+        }
+        alert(`⚠️ ${response.message}`);
+      }
+    } catch (error) {
+      console.error('Pictory error:', error);
+      alert('Failed to generate video with Pictory. Please try again.');
+    }
+  };
+
+  const generateVideoWithLumen5 = async () => {
+    if (!result) return;
+
+    try {
+      const response = await makeAuthenticatedRequest("/api/ai-tools/video/lumen5", {
+        method: "POST",
+        body: JSON.stringify({
+          scriptData: { ...result, blogTitle: formData.blogTitle },
+          options: {
+            background: 'gradient',
+            font: 'modern',
+            colorScheme: 'professional'
+          }
+        })
+      });
+
+      if (response.success) {
+        alert(`✅ ${response.message}`);
+      } else {
+        // Download fallback template
+        if (response.fallback) {
+          const blob = new Blob([response.fallback.content], { type: response.fallback.type });
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = response.fallback.filename;
+          document.body.appendChild(a);
+          a.click();
+          window.URL.revokeObjectURL(url);
+          document.body.removeChild(a);
+        }
+        alert(`⚠️ ${response.message}`);
+      }
+    } catch (error) {
+      console.error('Lumen5 error:', error);
+      alert('Failed to generate video with Lumen5. Please try again.');
+    }
+  };
+
+  const exportToMP4 = async () => {
+    if (!result) return;
+
+    try {
+      const response = await makeAuthenticatedRequest("/api/ai-tools/video/export-mp4", {
+        method: "POST",
+        body: JSON.stringify({
+          scriptData: { ...result, blogTitle: formData.blogTitle },
+          options: {
+            quality: 'high',
+            resolution: '1920x1080',
+            frameRate: '30 fps'
+          }
+        })
+      });
+
+      if (response.success) {
+        // Download instructions
+        const blob = new Blob([response.instructions], { type: 'text/markdown' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `mp4-export-${formData.blogTitle || 'video'}.md`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+        alert('✅ MP4 export instructions downloaded!');
+      } else {
+        alert(`⚠️ ${response.message}`);
+      }
+    } catch (error) {
+      console.error('MP4 export error:', error);
+      alert('Failed to generate MP4 export instructions. Please try again.');
+    }
+  };
+
+  const generateProductionGuide = async () => {
+    if (!result) return;
+
+    try {
+      const response = await makeAuthenticatedRequest("/api/ai-tools/video/production-guide", {
+        method: "POST",
+        body: JSON.stringify({
+          scriptData: { ...result, blogTitle: formData.blogTitle }
+        })
+      });
+
+      if (response.success) {
+        // Download production guide
+        const blob = new Blob([response.guide.content], { type: response.guide.type });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = response.guide.filename;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+        alert('✅ Video production guide downloaded!');
+      } else {
+        alert(`⚠️ ${response.message}`);
+      }
+    } catch (error) {
+      console.error('Production guide error:', error);
+      alert('Failed to generate production guide. Please try again.');
+    }
+  };
 
   const generateComprehensiveVideoData = (formData: any) => {
     const { blogTitle, blogContent, videoStyle, targetPlatform, duration, audience, callToAction } = formData
@@ -589,6 +767,31 @@ export default function BlogToVideoPage() {
                 </div>
 
                 <div className="space-y-2">
+                  <Label htmlFor="blogUrl">Blog URL (Optional)</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      id="blogUrl"
+                      placeholder="https://example.com/blog-post"
+                      value={formData.blogUrl}
+                      onChange={(e) => handleInputChange("blogUrl", e.target.value)}
+                      disabled={!hasAccess}
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={scrapeBlogUrl}
+                      disabled={!hasAccess || !formData.blogUrl}
+                    >
+                      Scrape
+                    </Button>
+                  </div>
+                  <p className="text-xs text-gray-500">
+                    Paste a blog URL to automatically extract content
+                  </p>
+                </div>
+
+                <div className="space-y-2">
                   <Label htmlFor="blogContent">Blog Content *</Label>
                   <Textarea
                     id="blogContent"
@@ -1012,6 +1215,95 @@ export default function BlogToVideoPage() {
                   </CardContent>
                 </Card>
 
+                {/* Video Generation & Export */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Video className="w-5 h-5 text-purple-500" />
+                      Video Generation & Export
+                    </CardTitle>
+                    <CardDescription>
+                      Generate videos and export in various formats
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {/* Video Generation Tools */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="flex items-center justify-between p-3 border rounded-lg">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 bg-blue-500 text-white rounded flex items-center justify-center text-xs font-bold">P</div>
+                          <div>
+                            <p className="font-medium">Pictory AI</p>
+                            <p className="text-sm text-gray-600">AI-powered video generation</p>
+                          </div>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={generateVideoWithPictory}
+                          disabled={!result}
+                        >
+                          Generate Video
+                        </Button>
+                      </div>
+
+                      <div className="flex items-center justify-between p-3 border rounded-lg">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 bg-green-500 text-white rounded flex items-center justify-center text-xs font-bold">L</div>
+                          <div>
+                            <p className="font-medium">Lumen5</p>
+                            <p className="text-sm text-gray-600">Professional video creation</p>
+                          </div>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={generateVideoWithLumen5}
+                          disabled={!result}
+                        >
+                          Generate Video
+                        </Button>
+                      </div>
+                    </div>
+
+                    {/* Export Options */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <Button
+                        variant="outline"
+                        onClick={exportToMP4}
+                        disabled={!result}
+                        className="flex flex-col items-center gap-2 p-4"
+                      >
+                        <div className="w-8 h-8 bg-red-500 text-white rounded flex items-center justify-center text-xs font-bold">MP4</div>
+                        <span className="text-sm">MP4 Export</span>
+                        <span className="text-xs text-gray-500">Instructions</span>
+                      </Button>
+
+                      <Button
+                        variant="outline"
+                        onClick={generateProductionGuide}
+                        disabled={!result}
+                        className="flex flex-col items-center gap-2 p-4"
+                      >
+                        <div className="w-8 h-8 bg-purple-500 text-white rounded flex items-center justify-center text-xs font-bold">📚</div>
+                        <span className="text-sm">Production Guide</span>
+                        <span className="text-xs text-gray-500">Complete guide</span>
+                      </Button>
+
+                      <Button
+                        variant="outline"
+                        onClick={handleDownloadPDF}
+                        disabled={!result}
+                        className="flex flex-col items-center gap-2 p-4"
+                      >
+                        <div className="w-8 h-8 bg-blue-500 text-white rounded flex items-center justify-center text-xs font-bold">📄</div>
+                        <span className="text-sm">Script PDF</span>
+                        <span className="text-xs text-gray-500">Printable format</span>
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+
                 {/* Action Buttons */}
                 <div className="flex gap-4">
                   <Button
@@ -1025,10 +1317,6 @@ export default function BlogToVideoPage() {
                       <Copy className="w-4 h-4 mr-2" />
                     )}
                     {copied["all-video"] ? "Copied!" : "Copy Full Script"}
-                  </Button>
-                  <Button variant="outline" onClick={handleDownloadPDF}>
-                    <Download className="w-4 h-4 mr-2" />
-                    Export Production Guide
                   </Button>
                 </div>
               </div>

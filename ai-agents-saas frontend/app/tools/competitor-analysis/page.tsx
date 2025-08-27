@@ -11,198 +11,80 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Header } from "@/components/header"
 import Link from "next/link"
-import { ArrowLeft, Download, Copy, CheckCircle, Loader2, TrendingUp, Target, BarChart3, Users, Globe, AlertTriangle, Lightbulb, Zap, Shield, Clock, DollarSign, Eye, Play, Star, Lock, Crown } from 'lucide-react'
+import { ArrowLeft, Download, Copy, CheckCircle, Loader2, TrendingUp, Target, BarChart3, Users, Globe, AlertTriangle, Lightbulb, Zap, Shield, Clock, DollarSign, Eye, Play, Star, Lock, Crown, FileText } from 'lucide-react'
 import { useUserStore } from "@/lib/user-store"
 import { makeAuthenticatedRequest } from "@/lib/auth-utils"
 import { generateProfessionalPDF } from "@/utils/pdfGenerator"
 
-interface CompetitorData {
-  name: string
-  website: string
-  overview: {
-    description: string
-    founded: string
-    employees: string
-    revenue: string
-    funding?: string
-    headquarters?: string
-    key_executives?: string[]
-    business_model?: string
-  }
-  digital_presence: {
-    website_traffic: number
-    traffic_growth?: string
-    social_followers: {
-      facebook: number
-      twitter: number
-      linkedin: number
-      instagram: number
-      youtube?: number
-      tiktok?: number
-    }
-    social_engagement_rate?: string
-    seo_score: number
-    domain_authority: number
-    backlinks?: number
-    organic_keywords?: number
-    paid_keywords?: number
-    content_publishing_frequency?: string
-    email_subscribers?: number
-    mobile_traffic_percentage?: string
-  }
-  marketing_strategy: {
-    content_themes: string[]
-    posting_frequency: string
-    ad_spend_estimate: string
-    marketing_channels?: string[]
-    content_types?: string[]
-    top_keywords: Array<{
-      keyword: string
-      position: number
-      volume: number
-      difficulty?: string
-      cpc?: string
+interface CompetitorAnalysisData {
+  analysisDate: string
+  yourBusiness: string
+  industry: string
+  competitorUrls: string[]
+  scrapedData: any[]
+  trafficIntelligence: any[]
+  seoAnalysis: any[]
+  adIntelligence: any[]
+  aiAnalysis: {
+    executiveSummary: string
+    competitorProfiles: Array<{
+      domain: string
+      scrapedData: string
+      trafficInsights: string
+      seoStrengths: string
+      adStrategy: string
+      marketPosition: string
     }>
-    brand_mentions?: number
-    customer_reviews?: {
-      google?: number
-      trustpilot?: number
-      g2?: number
-      capterra?: number
-    }
-  }
-  product_analysis?: {
-    core_features?: string[]
-    unique_selling_propositions?: string[]
-    pricing_tiers?: Array<{
-      name: string
-      price: string
-      features: string[]
-    }>
-    target_audience?: string
-    customer_satisfaction_score?: number
-    feature_comparison?: {
-      analytics?: string
-      automation?: string
-      integrations?: string
-      support?: string
-    }
-  }
+    swotAnalysis: {
   strengths: string[]
   weaknesses: string[]
   opportunities: string[]
   threats: string[]
-  recent_developments?: Array<{
-    date: string
-    event: string
-    impact: string
-  }>
+    }
+    strategicRecommendations: string[]
+    marketGaps: string[]
+    competitiveAdvantages: string[]
+  }
+  summary: {
+    totalCompetitors: number
+    dataSources: string[]
+    keyFindings: string
+  }
 }
 
 interface CompetitorResult {
-  competitors: CompetitorData[]
-  market_analysis: {
-    market_size: string
-    growth_rate: string
-    market_maturity?: string
-    key_trends: string[]
-    market_leaders: string[]
-    market_segments?: Array<{
-      segment: string
-      size: string
-      growth: string
-      key_players: string[]
+  analysisDate: string
+  yourBusiness: string
+  industry: string
+  competitorUrls: string[]
+  scrapedData: any[]
+  trafficIntelligence: any[]
+  seoAnalysis: any[]
+  adIntelligence: any[]
+  aiAnalysis: {
+    executiveSummary: string
+    competitorProfiles: Array<{
+      domain: string
+      scrapedData: string
+      trafficInsights: string
+      seoStrengths: string
+      adStrategy: string
+      marketPosition: string
     }>
-    geographic_distribution?: {
-      north_america: string
-      europe: string
-      asia_pacific: string
-      other: string
+    swotAnalysis: {
+      strengths: string[]
+      weaknesses: string[]
+      opportunities: string[]
+      threats: string[]
     }
-    seasonal_patterns?: string
-    regulatory_environment?: string
+    strategicRecommendations: string[]
+    marketGaps: string[]
+    competitiveAdvantages: string[]
   }
-  competitive_gaps: Array<{
-    category: string
-    opportunity: string
-    difficulty: "low" | "medium" | "high"
-    impact: "low" | "medium" | "high"
-    market_demand?: string
-    implementation_cost?: string
-    timeline?: string
-    competitive_advantage?: string
-  }>
-  recommendations: Array<{
-    priority: "high" | "medium" | "low"
-    category: string
-    action: string
-    rationale: string
-    timeline: string
-    estimated_cost?: string
-    expected_roi?: string
-    success_metrics?: string[]
-    implementation_steps?: string[]
-  }>
-  benchmarking: {
-    your_position: string
-    positioning_statement?: string
-    key_metrics_comparison: Array<{
-      metric: string
-      your_score: number
-      competitor_avg: number
-      industry_avg: number
-      target?: number
-      gap_analysis?: string
-    }>
-    competitive_advantage_matrix?: {
-      price?: string
-      features?: string
-      support?: string
-      ease_of_use?: string
-      integration?: string
-    }
-  }
-  strategic_insights?: {
-    market_entry_timing?: string
-    competitive_response_likelihood?: string
-    differentiation_opportunities?: string[]
-    partnership_opportunities?: Array<{
-      partner: string
-      rationale: string
-      potential_impact: string
-    }>
-    acquisition_targets?: Array<{
-      company: string
-      rationale: string
-      estimated_value: string
-    }>
-  }
-  risk_assessment?: {
-    high_risks?: Array<{
-      risk: string
-      probability: string
-      impact: string
-      mitigation: string
-    }>
-    medium_risks?: Array<{
-      risk: string
-      probability: string
-      impact: string
-      mitigation: string
-    }>
-  }
-  action_plan?: {
-    immediate_actions?: Array<{
-      action: string
-      timeline: string
-      resources_needed: string
-    }>
-    short_term_goals?: Array<{
-      goal: string
-      timeline: string
-      success_metrics: string[]
-    }>
-    long_term_vision?: string
+  summary: {
+    totalCompetitors: number
+    dataSources: string[]
+    keyFindings: string
   }
 }
 
@@ -236,7 +118,18 @@ export default function CompetitorAnalysisPage() {
     }
 
     if (!formData.yourCompany || !formData.competitors) {
-      alert("Please enter your company name and competitor list")
+      alert("Please enter your company name and competitor URLs")
+      return
+    }
+
+    // Validate that at least one valid URL is provided
+    const competitorUrls = formData.competitors
+      .split('\n')
+      .map(url => url.trim())
+      .filter(url => url && url.startsWith('http'));
+
+    if (competitorUrls.length === 0) {
+      alert("Please enter valid competitor URLs (starting with http:// or https://)")
       return
     }
 
@@ -245,11 +138,23 @@ export default function CompetitorAnalysisPage() {
     setError(null)
 
     try {
+      // Parse competitor URLs from textarea
+      const competitorUrls = formData.competitors
+        .split('\n')
+        .map(url => url.trim())
+        .filter(url => url && url.startsWith('http'))
+        .slice(0, 3); // Limit to 3 URLs
+
+      if (competitorUrls.length === 0) {
+        alert("Please enter valid competitor URLs (starting with http:// or https://)");
+        return;
+      }
+
       // Prepare input data for the backend
       const inputData = {
         yourBusiness: formData.yourCompany,
         industry: formData.industry || 'Not specified',
-        competitors: formData.competitors,
+        competitorUrls: competitorUrls,
         analysisFocus: formData.analysisType || 'comprehensive',
         location: formData.location || 'Not specified',
         focusAreas: formData.focusAreas || 'Not specified',
@@ -310,143 +215,45 @@ export default function CompetitorAnalysisPage() {
     }
   }
 
-  const transformAIResponseToFrontendFormat = (aiOutput: any, formData: any) => {
-    console.log('Transforming AI response:', aiOutput)
+  // Transform AI response to match frontend structure
+  const transformAIResponseToFrontendFormat = (aiOutput: any, inputData: any) => {
+    console.log('Transforming AI response:', aiOutput);
     
-    // Transform competitor profiles - USE ONLY AI GENERATED CONTENT
-    const transformedCompetitors = aiOutput.competitorProfiles?.map((profile: any, index: number) => ({
-      name: profile.competitorName || `Competitor ${index + 1}`,
-      website: `https://${profile.competitorName?.toLowerCase().replace(/\s+/g, '')}.com` || '',
-      overview: {
-        description: profile.marketPosition || `Leading company in ${formData.industry || 'the industry'}`,
-        founded: profile.foundedYear || 'Unknown',
-        employees: profile.employeeCount || 'Unknown',
-        revenue: profile.revenue || 'Unknown',
-        headquarters: 'Global',
-        business_model: profile.uniqueValueProposition || 'Standard business model'
-      },
-      digital_presence: {
-        website_traffic: profile.websiteTraffic ? parseInt(profile.websiteTraffic.replace(/\D/g, '')) || 500000 : 500000,
-        seo_score: profile.seoScore ? parseInt(profile.seoScore.split('/')[0]) || 75 : 75,
-        domain_authority: profile.domainAuthority ? parseInt(profile.domainAuthority) || 50 : 50,
-        social_followers: {
-          facebook: profile.socialFollowers?.facebook ? (parseInt(profile.socialFollowers.facebook.replace(/\D/g, '')) || 0) * (profile.socialFollowers.facebook.includes('M') ? 1000000 : profile.socialFollowers.facebook.includes('K') ? 1000 : 1) : 100000,
-          twitter: profile.socialFollowers?.twitter ? (parseInt(profile.socialFollowers.twitter.replace(/\D/g, '')) || 0) * (profile.socialFollowers.twitter.includes('M') ? 1000000 : profile.socialFollowers.twitter.includes('K') ? 1000 : 1) : 50000,
-          linkedin: profile.socialFollowers?.linkedin ? (parseInt(profile.socialFollowers.linkedin.replace(/\D/g, '')) || 0) * (profile.socialFollowers.linkedin.includes('M') ? 1000000 : profile.socialFollowers.linkedin.includes('K') ? 1000 : 1) : 30000,
-          instagram: profile.socialFollowers?.instagram ? (parseInt(profile.socialFollowers.instagram.replace(/\D/g, '')) || 0) * (profile.socialFollowers.instagram.includes('M') ? 1000000 : profile.socialFollowers.instagram.includes('K') ? 1000 : 1) : 100000
+    // Transform backend data to match frontend expectations
+    const transformedResult = {
+      summary: {
+        totalCompetitors: aiOutput?.competitorProfiles?.length || 0,
+        dataSources: ['Website Analysis', 'Social Media', 'SEO Tools', 'Market Research', 'Traffic Analysis', 'Backlink Analysis'],
+        keyMetrics: {
+          totalCompetitors: aiOutput?.competitorProfiles?.length || 0,
+          marketGaps: aiOutput?.strategicInsights?.marketGaps?.length || 0,
+          recommendations: aiOutput?.strategicInsights?.strategicRecommendations?.length || 0
         }
       },
-      marketing_strategy: {
-        content_themes: ['Industry insights', 'Product updates', 'Customer success'],
-        posting_frequency: 'Daily',
-        ad_spend_estimate: '$50K - $100K/month',
-        top_keywords: [
-          { keyword: 'industry solution', position: 1, volume: 1000 },
-          { keyword: 'business software', position: 3, volume: 800 }
-        ]
+      aiAnalysis: {
+        executiveSummary: `Comprehensive analysis of ${inputData?.yourCompany || 'your business'} in the ${inputData?.industry || 'industry'} sector, identifying key competitive advantages and strategic opportunities.`,
+        swotAnalysis: {
+          strengths: aiOutput?.swotAnalysis?.yourStrengths || [],
+          weaknesses: aiOutput?.swotAnalysis?.yourWeaknesses || [],
+          opportunities: aiOutput?.swotAnalysis?.opportunities || [],
+          threats: aiOutput?.swotAnalysis?.threats || []
+        },
+        strategicRecommendations: aiOutput?.strategicInsights?.strategicRecommendations || [],
+        marketGaps: aiOutput?.strategicInsights?.marketGaps || [],
+        competitiveAdvantages: aiOutput?.strategicInsights?.competitiveAdvantages || {},
+        performanceMetrics: aiOutput?.strategicInsights?.performanceMetrics || {}
       },
-      strengths: profile.strengths || ['Strong market presence', 'Innovative solutions'],
-      weaknesses: profile.weaknesses || ['Limited market reach', 'Resource constraints'],
-      opportunities: profile.opportunities || ['Market expansion', 'Product diversification'],
-      threats: profile.threats || ['Competition', 'Market changes']
-    })) || []
-
-    // Transform SWOT analysis for your business - USE AI GENERATED CONTENT ONLY
-    const yourSWOT = aiOutput.swotAnalysis
-
-    // Transform competitive advantages - USE AI GENERATED CONTENT ONLY
-    const competitiveAdvantages = aiOutput.competitiveAdvantages
-
-    // Transform market gaps - USE AI GENERATED CONTENT ONLY
-    const marketGaps = aiOutput.marketGaps
-
-    // Transform strategic recommendations - USE AI GENERATED CONTENT ONLY
-    const recommendations = aiOutput.strategicRecommendations?.immediateActions?.map((action: string, index: number) => ({
-      priority: index === 0 ? 'high' : index === 1 ? 'medium' : 'low',
-      category: 'Strategy',
-      action: action,
-      rationale: 'Based on competitive analysis',
-      timeline: 'Q1 2024',
-      expected_roi: '15-25%',
-      success_metrics: ['Market share increase', 'Revenue growth']
-    })) || []
-
-    // Transform performance benchmarks - USE AI GENERATED CONTENT ONLY
-    console.log('AI Performance Benchmarks:', aiOutput.performanceBenchmarks)
-    console.log('AI Key Metrics:', aiOutput.performanceBenchmarks?.keyMetrics)
+      competitorProfiles: aiOutput?.competitorProfiles || [],
+      detailedAnalysis: {
+        marketPosition: 'Analyzing market position...',
+        competitiveLandscape: 'Mapping competitive landscape...',
+        growthOpportunities: 'Identifying growth opportunities...'
+      }
+    };
     
-    const benchmarking = {
-      your_position: aiOutput.performanceBenchmarks?.targetGoals || aiOutput.strategicRecommendations?.longTermStrategy || 'Achieve competitive advantage in the market',
-      key_metrics_comparison: aiOutput.performanceBenchmarks?.keyMetrics?.map((metricData: any) => {
-        console.log('Processing metric data:', metricData)
-        return {
-          metric: metricData?.metric || 'Performance Metric',
-          your_score: metricData?.yourScore || 0,
-          competitor_avg: metricData?.competitorAvg || 0,
-          industry_avg: metricData?.industryAvg || 0,
-          target: metricData?.target || 0
-        }
-      }) || []
-    }
-
-    // Generate additional sections - USE AI GENERATED CONTENT ONLY
-    const strategicInsights = {
-      market_entry_timing: aiOutput.strategicRecommendations?.shortTermStrategy,
-      competitive_response_likelihood: 'High likelihood of competitive response',
-      differentiation_opportunities: aiOutput.marketGaps?.opportunityAreas || [],
-      partnership_opportunities: [
-        { partner: 'Technology Partner', rationale: 'Enhanced capabilities', potential_impact: '20% growth' }
-      ]
-    }
-
-    const riskAssessment = {
-      high_risks: aiOutput.competitorProfiles?.[0]?.threats?.map((threat: string) => ({
-        risk: threat,
-        probability: 'High',
-        impact: 'Significant',
-        mitigation: 'Strategic response required'
-      })) || [],
-      medium_risks: aiOutput.competitorProfiles?.[1]?.threats?.map((threat: string) => ({
-        risk: threat,
-        probability: 'Medium',
-        impact: 'Moderate',
-        mitigation: 'Monitoring required'
-      })) || []
-    }
-
-    const actionPlan = {
-      immediate_actions: aiOutput.strategicRecommendations?.immediateActions?.map((action: string) => ({
-        action: action,
-        timeline: '30 days',
-        resources_needed: 'Team resources'
-      })) || [],
-      short_term_goals: [
-        { goal: 'Increase market share by 5%', timeline: '6 months', success_metrics: ['Revenue growth', 'Customer acquisition'] }
-      ],
-      long_term_vision: aiOutput.strategicRecommendations?.longTermStrategy || 'Become market leader in the industry'
-    }
-
-    return {
-      competitors: transformedCompetitors,
-      market_analysis: {
-        market_size: aiOutput.marketGaps?.unservedNeeds?.length ? `$${Math.floor(Math.random() * 500 + 100)}B` : '$500B',
-        growth_rate: `${Math.floor(Math.random() * 10 + 5)}% CAGR`,
-        key_trends: aiOutput.marketGaps?.opportunityAreas || ['Digital transformation', 'AI integration', 'Sustainability'],
-        market_leaders: transformedCompetitors.map((c: any) => c.name)
-      },
-      competitive_gaps: marketGaps?.unservedNeeds?.map((need: string, index: number) => ({
-        category: 'Market Opportunity',
-        opportunity: need,
-        difficulty: index === 0 ? 'medium' : 'low',
-        impact: index === 0 ? 'high' : 'medium'
-      })) || [],
-      recommendations: recommendations,
-      benchmarking: benchmarking,
-      strategic_insights: strategicInsights,
-      risk_assessment: riskAssessment,
-      action_plan: actionPlan
-    }
-  }
+    console.log('Transformed result:', transformedResult);
+    return transformedResult;
+  };
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text)
@@ -454,59 +261,9 @@ export default function CompetitorAnalysisPage() {
     setTimeout(() => setCopied(false), 2000)
   }
 
-  const formatNumber = (num: number) => {
-    if (!num || isNaN(num)) return '0'
-    if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`
-    if (num >= 1000) return `${(num / 1000).toFixed(1)}K`
-    return num.toString()
-  }
 
-  const getDifficultyColor = (difficulty: string) => {
-    switch (difficulty) {
-      case "low":
-        return "bg-green-100 text-green-800"
-      case "medium":
-        return "bg-yellow-100 text-yellow-800"
-      case "high":
-        return "bg-red-100 text-red-800"
-      default:
-        return "bg-gray-100 text-gray-800"
-    }
-  }
 
-  const getImpactColor = (impact: string) => {
-    switch (impact) {
-      case "low":
-        return "bg-gray-100 text-gray-800"
-      case "medium":
-        return "bg-blue-100 text-blue-800"
-      case "high":
-        return "bg-purple-100 text-purple-800"
-      default:
-        return "bg-gray-100 text-gray-800"
-    }
-  }
-
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case "high":
-        return "bg-red-100 text-red-800"
-      case "medium":
-        return "bg-yellow-100 text-yellow-800"
-      case "low":
-        return "bg-green-100 text-green-800"
-      default:
-        return "bg-gray-100 text-gray-800"
-    }
-  }
-
-  const getComparisonColor = (yourScore: number, avgScore: number) => {
-    if (yourScore > avgScore) return "text-green-600"
-    if (yourScore < avgScore) return "text-red-600"
-    return "text-gray-600"
-  }
-
-  const handleDownloadPDF = () => {
+    const handleDownloadPDF = () => {
     if (!result) return;
     
     try {
@@ -529,6 +286,92 @@ export default function CompetitorAnalysisPage() {
       console.error("PDF generation error:", error);
       alert("Failed to generate PDF. Please try again.");
     }
+  };
+
+  const handleExportToNotion = () => {
+    if (!result) return;
+    
+    try {
+      // Generate Notion-compatible markdown
+      const notionContent = generateNotionExport(result, formData);
+      
+      // Create and download markdown file
+      const blob = new Blob([notionContent], { type: 'text/markdown' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `competitor-analysis-${formData.yourCompany?.replace(/[^a-zA-Z0-9]/g, '-') || 'company'}-${new Date().toISOString().split('T')[0]}.md`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      
+      alert("Competitor analysis exported to Notion-compatible markdown successfully!");
+    } catch (error) {
+      console.error("Notion export error:", error);
+      alert("Failed to export to Notion. Please try again.");
+    }
+  };
+
+  const generateNotionExport = (analysisData: any, formData: any) => {
+    let markdown = `# Competitor Analysis Report: ${formData.yourCompany || 'Your Business'}\n\n`;
+    markdown += `**Industry:** ${formData.industry || 'Business'}\n`;
+    markdown += `**Analysis Date:** ${new Date().toLocaleDateString()}\n\n`;
+    
+    // Executive Summary
+    markdown += `## Executive Summary\n\n`;
+    markdown += `${analysisData.aiAnalysis?.executiveSummary || 'Comprehensive competitor analysis completed.'}\n\n`;
+    
+    // Competitor Profiles
+    markdown += `## Competitor Profiles\n\n`;
+    analysisData.competitorProfiles?.forEach((competitor: any, index: number) => {
+      markdown += `### ${competitor.competitorName || `Competitor ${index + 1}`}\n\n`;
+      markdown += `**Website:** ${competitor.website || 'N/A'}\n`;
+      markdown += `**SEO Score:** ${competitor.websiteAnalysis?.seoScore || 'N/A'}/100\n`;
+      markdown += `**Domain Authority:** ${competitor.seoAnalysis?.domainAuthority || 'N/A'}\n`;
+      markdown += `**Estimated Traffic:** ${competitor.trafficAnalysis?.totalVisits || 'N/A'}\n\n`;
+      
+      if (competitor.contentAnalysis?.blogTopics?.length > 0) {
+        markdown += `**Recent Blog Topics:**\n`;
+        competitor.contentAnalysis.blogTopics.slice(0, 3).forEach((topic: any) => {
+          markdown += `- ${topic.title}\n`;
+        });
+        markdown += `\n`;
+      }
+    });
+    
+    // SWOT Analysis
+    markdown += `## SWOT Analysis\n\n`;
+    const swot = analysisData.aiAnalysis?.swotAnalysis;
+    if (swot) {
+      markdown += `### Strengths\n`;
+      swot.strengths?.forEach((strength: string) => markdown += `- ${strength}\n`);
+      markdown += `\n### Weaknesses\n`;
+      swot.weaknesses?.forEach((weakness: string) => markdown += `- ${weakness}\n`);
+      markdown += `\n### Opportunities\n`;
+      swot.opportunities?.forEach((opportunity: string) => markdown += `- ${opportunity}\n`);
+      markdown += `\n### Threats\n`;
+      swot.threats?.forEach((threat: string) => markdown += `- ${threat}\n`);
+      markdown += `\n`;
+    }
+    
+    // Strategic Recommendations
+    markdown += `## Strategic Recommendations\n\n`;
+    analysisData.aiAnalysis?.strategicRecommendations?.forEach((rec: any) => {
+      markdown += `### ${rec.recommendation}\n\n`;
+      markdown += `**Impact:** ${rec.impact}\n`;
+      markdown += `**Effort:** ${rec.effort}\n`;
+      markdown += `**Timeline:** ${rec.timeline}\n\n`;
+    });
+    
+    // Market Gaps
+    if (analysisData.aiAnalysis?.marketGaps?.length > 0) {
+      markdown += `## Market Gaps & Opportunities\n\n`;
+      analysisData.aiAnalysis.marketGaps.forEach((gap: string) => markdown += `- ${gap}\n`);
+      markdown += `\n`;
+    }
+    
+    return markdown;
   };
 
 
@@ -593,15 +436,18 @@ export default function CompetitorAnalysisPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="competitors">Competitor List *</Label>
+                  <Label htmlFor="competitors">Competitor URLs * (Up to 3)</Label>
                   <Textarea
                     id="competitors"
-                    placeholder="e.g., Competitor A, Competitor B, Competitor C&#10;or specific names like: Apple, Samsung, Google"
+                    placeholder="Enter competitor website URLs (one per line):&#10;https://competitor1.com&#10;https://competitor2.com&#10;https://competitor3.com"
                     value={formData.competitors}
                     onChange={(e) => handleInputChange("competitors", e.target.value)}
                     disabled={!hasAccess}
                     className="min-h-[80px]"
                   />
+                  <p className="text-sm text-gray-600">
+                    🔍 We'll scrape these websites and analyze their meta tags, content, ads, and SEO data
+                  </p>
                 </div>
 
                 <div className="space-y-2">
@@ -687,7 +533,7 @@ export default function CompetitorAnalysisPage() {
                 <div className="space-y-3 pt-4">
                   <Button
                     onClick={handleGenerate}
-                    disabled={!hasAccess || isGenerating || !formData.yourCompany || !formData.competitors}
+                    disabled={!hasAccess || isGenerating || !formData.yourCompany || !formData.competitors || !formData.competitors.split('\n').some(url => url.trim().startsWith('http'))}
                     className="w-full bg-gradient-to-r from-indigo-400 to-purple-600 hover:opacity-90 text-white font-semibold py-3"
                   >
                     {isGenerating ? (
@@ -734,47 +580,120 @@ export default function CompetitorAnalysisPage() {
               </Card>
             ) : (
               <div className="space-y-6">
-                {/* Market Analysis */}
+                {/* Analysis Summary */}
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
-                      <Globe className="w-5 h-5 text-blue-500" />
-                      Market Overview
+                      <BarChart3 className="w-5 h-5 text-blue-500" />
+                      Analysis Summary
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
                       <div className="text-center p-3 bg-blue-50 rounded-lg">
-                        <div className="text-2xl font-bold text-blue-600">{result?.market_analysis?.market_size || 'N/A'}</div>
-                        <div className="text-sm text-gray-600">Market Size</div>
+                        <div className="text-2xl font-bold text-blue-600">{result?.summary?.totalCompetitors || 0}</div>
+                        <div className="text-sm text-gray-600">Competitors Analyzed</div>
                       </div>
                       <div className="text-center p-3 bg-green-50 rounded-lg">
-                        <div className="text-2xl font-bold text-green-600">{result?.market_analysis?.growth_rate || 'N/A'}</div>
-                        <div className="text-sm text-gray-600">Growth Rate</div>
+                        <div className="text-2xl font-bold text-green-600">{result?.aiAnalysis?.swotAnalysis?.opportunities?.length || 0}</div>
+                        <div className="text-sm text-gray-600">Opportunities</div>
                       </div>
                       <div className="text-center p-3 bg-purple-50 rounded-lg">
-                        <div className="text-2xl font-bold text-purple-600">{result?.competitors?.length || 0}</div>
-                        <div className="text-sm text-gray-600">Analyzed</div>
+                        <div className="text-2xl font-bold text-purple-600">{result?.aiAnalysis?.strategicRecommendations?.length || 0}</div>
+                        <div className="text-sm text-gray-600">Recommendations</div>
                       </div>
                       <div className="text-center p-3 bg-orange-50 rounded-lg">
                         <div className="text-2xl font-bold text-orange-600">
-                          {result?.market_analysis?.market_leaders?.length || 0}
+                          {result?.summary?.dataSources?.length || 0}
                         </div>
-                        <div className="text-sm text-gray-600">Leaders</div>
+                        <div className="text-sm text-gray-600">Data Sources</div>
                       </div>
                     </div>
 
                     <div>
-                      <h4 className="font-medium text-gray-900 mb-2">Key Market Trends:</h4>
-                      <ul className="space-y-1">
-                        {result?.market_analysis?.key_trends?.map((trend, index) => (
-                          <li key={index} className="text-sm text-gray-600 flex items-center gap-2">
-                            <TrendingUp className="w-4 h-4 text-green-500" />
-                            {trend}
-                          </li>
-                        )) || []}
-                      </ul>
+                      <h4 className="font-medium text-gray-900 mb-2">Key Findings:</h4>
+                      <p className="text-sm text-gray-600">{result?.aiAnalysis?.executiveSummary || 'Analysis completed successfully'}</p>
                     </div>
+
+                    <div className="mt-4">
+                      <h4 className="font-medium text-gray-900 mb-2">Data Sources Used:</h4>
+                      <div className="flex flex-wrap gap-2">
+                        {result?.summary?.dataSources?.map((source, index) => (
+                          <Badge key={index} variant="outline" className="text-xs">
+                            {source}
+                          </Badge>
+                        )) || []}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* SWOT Analysis */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Target className="w-5 h-5 text-green-500" />
+                      SWOT Analysis
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          <div>
+                        <h4 className="font-medium text-green-700 mb-3 flex items-center gap-2">
+                          <CheckCircle className="w-4 h-4" />
+                          Strengths
+                        </h4>
+                        <ul className="space-y-2">
+                          {result?.aiAnalysis?.swotAnalysis?.strengths?.map((strength, index) => (
+                            <li key={index} className="text-sm text-gray-700 bg-green-50 p-2 rounded">
+                              {strength}
+                            </li>
+                          )) || []}
+                        </ul>
+                          </div>
+
+                          <div>
+                        <h4 className="font-medium text-red-700 mb-3 flex items-center gap-2">
+                          <AlertTriangle className="w-4 h-4" />
+                          Weaknesses
+                        </h4>
+                        <ul className="space-y-2">
+                          {result?.aiAnalysis?.swotAnalysis?.weaknesses?.map((weakness, index) => (
+                            <li key={index} className="text-sm text-gray-700 bg-red-50 p-2 rounded">
+                              {weakness}
+                            </li>
+                          )) || []}
+                        </ul>
+                        </div>
+
+                            <div>
+                        <h4 className="font-medium text-blue-700 mb-3 flex items-center gap-2">
+                          <Lightbulb className="w-4 h-4" />
+                          Opportunities
+                        </h4>
+                        <ul className="space-y-2">
+                          {result?.aiAnalysis?.swotAnalysis?.opportunities?.map((opportunity, index) => (
+                            <li key={index} className="text-sm text-gray-700 bg-blue-50 p-2 rounded">
+                              {opportunity}
+                                  </li>
+                          )) || []}
+                              </ul>
+                            </div>
+                      
+                            <div>
+                        <h4 className="font-medium text-orange-700 mb-3 flex items-center gap-2">
+                          <Shield className="w-4 h-4" />
+                          Threats
+                        </h4>
+                        <ul className="space-y-2">
+                          {result?.aiAnalysis?.swotAnalysis?.threats?.map((threat, index) => (
+                            <li key={index} className="text-sm text-gray-700 bg-orange-50 p-2 rounded">
+                              {threat}
+                                  </li>
+                          )) || []}
+                              </ul>
+                            </div>
+                          </div>
                   </CardContent>
                 </Card>
 
@@ -783,349 +702,105 @@ export default function CompetitorAnalysisPage() {
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <Users className="w-5 h-5 text-purple-500" />
-                      Competitor Profiles ({result?.competitors?.length || 0})
+                      Competitor Profiles ({result?.competitorProfiles?.length || 0})
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-6">
-                    {result?.competitors?.map((competitor, index) => (
+                    {result?.competitorProfiles?.map((competitor, index) => (
                       <div key={index} className="border rounded-lg p-6 bg-white">
-                                                  <div className="flex items-center justify-between mb-4">
-                            <h3 className="text-xl font-bold text-gray-900">{competitor?.name || 'Unknown Competitor'}</h3>
-                            <Badge variant="secondary">{competitor?.website || 'N/A'}</Badge>
-                          </div>
-
+                        <div className="flex items-center justify-between mb-4">
+                          <h3 className="text-xl font-bold text-gray-900">{competitor?.competitorName || competitor?.domain || 'Unknown Competitor'}</h3>
+                          <Badge variant="secondary">{competitor?.domain || 'N/A'}</Badge>
+                        </div>
+                        
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                          {/* Company Overview */}
+                          {/* Website Analysis */}
                           <div>
-                            <h4 className="font-medium text-gray-900 mb-2">Company Overview</h4>
+                            <h4 className="font-medium text-gray-900 mb-2">Website Analysis</h4>
                             <div className="space-y-2 text-sm">
-                              <p className="text-gray-600">{competitor?.overview?.description || 'No description available'}</p>
-                              <div className="grid grid-cols-2 gap-2">
-                                <div>
-                                  <span className="font-medium">Founded:</span> {competitor?.overview?.founded || 'N/A'}
-                                </div>
-                                <div>
-                                  <span className="font-medium">Employees:</span> {competitor?.overview?.employees || 'N/A'}
-                                </div>
-                                <div className="col-span-2">
-                                  <span className="font-medium">Revenue:</span> {competitor?.overview?.revenue || 'N/A'}
-                                </div>
-                              </div>
+                              <p className="text-gray-600 font-medium">{competitor?.websiteAnalysis?.title || 'Title unavailable'}</p>
+                              <p className="text-gray-600 text-xs">{competitor?.websiteAnalysis?.description || 'Description unavailable'}</p>
+                              <p className="text-gray-600 text-xs">SEO Score: {competitor?.websiteAnalysis?.seoScore || 'N/A'}/100</p>
+                              <p className="text-gray-600 text-xs">Page Speed: {competitor?.websiteAnalysis?.pageSpeed || 'N/A'}s</p>
                             </div>
                           </div>
 
-                          {/* Digital Presence */}
+                          {/* Content Analysis */}
                           <div>
-                            <h4 className="font-medium text-gray-900 mb-2">Digital Presence</h4>
-                            <div className="space-y-2">
-                              <div className="flex justify-between">
-                                <span className="text-sm text-gray-600">Website Traffic:</span>
-                                <span className="text-sm font-medium">
-                                  {formatNumber(competitor?.digital_presence?.website_traffic || 0)}/month
-                                </span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span className="text-sm text-gray-600">SEO Score:</span>
-                                <span className="text-sm font-medium">{competitor.digital_presence.seo_score}/100</span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span className="text-sm text-gray-600">Domain Authority:</span>
-                                <span className="text-sm font-medium">
-                                  {competitor.digital_presence.domain_authority}
-                                </span>
-                              </div>
-                              <div className="pt-2">
-                                <span className="text-sm text-gray-600">Social Followers:</span>
-                                <div className="grid grid-cols-2 gap-1 mt-1">
-                                  <div className="text-xs">
-                                    FB: {formatNumber(competitor.digital_presence.social_followers.facebook)}
-                                  </div>
-                                  <div className="text-xs">
-                                    TW: {formatNumber(competitor.digital_presence.social_followers.twitter)}
-                                  </div>
-                                  <div className="text-xs">
-                                    LI: {formatNumber(competitor.digital_presence.social_followers.linkedin)}
-                                  </div>
-                                  <div className="text-xs">
-                                    IG: {formatNumber(competitor.digital_presence.social_followers.instagram)}
-                                  </div>
-                                </div>
-                              </div>
+                            <h4 className="font-medium text-gray-900 mb-2">Content Strategy</h4>
+                            <div className="space-y-2 text-sm">
+                              <p className="text-gray-600 text-xs">Frequency: {competitor?.contentAnalysis?.contentFrequency || 'Unknown'}</p>
+                              <p className="text-gray-600 text-xs">Quality: {competitor?.contentAnalysis?.contentQuality || 'Unknown'}</p>
+                              <p className="text-gray-600 text-xs">Categories: {competitor?.contentAnalysis?.contentCategories?.join(', ') || 'General'}</p>
+                              <p className="text-gray-600 text-xs">Blog Posts: {competitor?.contentAnalysis?.totalBlogPosts || 0}</p>
                             </div>
                           </div>
                         </div>
 
-                        {/* SWOT Analysis */}
-                        <div className="mt-6">
-                          <h4 className="font-medium text-gray-900 mb-3">SWOT Analysis</h4>
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                              <h5 className="text-sm font-medium text-green-700 mb-2 flex items-center gap-1">
-                                <Star className="w-4 h-4" /> Strengths
-                              </h5>
-                              <ul className="space-y-1">
-                                {competitor.strengths.map((strength, idx) => (
-                                  <li key={idx} className="text-xs text-gray-600">
-                                    • {strength}
-                                  </li>
-                                ))}
-                              </ul>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
+                          {/* Marketing Analysis */}
+                          <div>
+                            <h4 className="font-medium text-gray-900 mb-2">Marketing Strategy</h4>
+                            <div className="space-y-2 text-sm">
+                              <p className="text-gray-600 text-xs">Total Ads: {competitor?.marketingAnalysis?.adCreatives?.totalAds || 'N/A'}</p>
+                              <p className="text-gray-600 text-xs">Est. Spend: {competitor?.marketingAnalysis?.estimatedAdSpend || 'N/A'}</p>
+                              <p className="text-gray-600 text-xs">Targeting: {competitor?.marketingAnalysis?.targetingStrategy?.join(', ') || 'N/A'}</p>
+                              <p className="text-gray-600 text-xs">Themes: {competitor?.marketingAnalysis?.creativeThemes?.join(', ') || 'N/A'}</p>
                             </div>
-                            <div>
-                              <h5 className="text-sm font-medium text-red-700 mb-2 flex items-center gap-1">
-                                <AlertTriangle className="w-4 h-4" /> Weaknesses
-                              </h5>
-                              <ul className="space-y-1">
-                                {competitor.weaknesses.map((weakness, idx) => (
-                                  <li key={idx} className="text-xs text-gray-600">
-                                    • {weakness}
-                                  </li>
-                                ))}
-                              </ul>
+                          </div>
+                          
+                          {/* SEO Analysis */}
+                          <div>
+                            <h4 className="font-medium text-gray-900 mb-2">SEO Profile</h4>
+                            <div className="space-y-2 text-sm">
+                              <p className="text-gray-600 text-xs">Backlinks: {competitor?.seoAnalysis?.backlinks?.totalBacklinks || 'N/A'}</p>
+                              <p className="text-gray-600 text-xs">Domain Authority: {competitor?.seoAnalysis?.domainAuthority || 'N/A'}</p>
+                              <p className="text-gray-600 text-xs">Link Quality: {competitor?.seoAnalysis?.backlinks?.linkQuality || 'N/A'}</p>
+                              <p className="text-gray-600 text-xs">Referring Domains: {competitor?.seoAnalysis?.backlinks?.referringDomains || 'N/A'}</p>
                             </div>
                           </div>
                         </div>
 
-                        {/* Enhanced Digital Presence */}
-                        <div className="mt-4">
-                          <h4 className="font-medium text-gray-900 mb-2">Enhanced Digital Metrics</h4>
-                          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                            {competitor.digital_presence.traffic_growth && (
-                              <div className="text-center p-2 bg-blue-50 rounded">
-                                <div className="text-sm font-medium text-blue-600">{competitor.digital_presence.traffic_growth}</div>
-                                <div className="text-xs text-gray-600">Traffic Growth</div>
-                              </div>
-                            )}
-                            {competitor.digital_presence.social_engagement_rate && (
-                              <div className="text-center p-2 bg-green-50 rounded">
-                                <div className="text-sm font-medium text-green-600">{competitor.digital_presence.social_engagement_rate}</div>
-                                <div className="text-xs text-gray-600">Engagement Rate</div>
-                              </div>
-                            )}
-                            {competitor.digital_presence.backlinks && (
-                              <div className="text-center p-2 bg-purple-50 rounded">
-                                <div className="text-sm font-medium text-purple-600">{formatNumber(competitor.digital_presence.backlinks)}</div>
-                                <div className="text-xs text-gray-600">Backlinks</div>
-                              </div>
-                            )}
-                            {competitor.digital_presence.organic_keywords && (
-                              <div className="text-center p-2 bg-orange-50 rounded">
-                                <div className="text-sm font-medium text-orange-600">{formatNumber(competitor.digital_presence.organic_keywords)}</div>
-                                <div className="text-xs text-gray-600">Organic Keywords</div>
-                              </div>
-                            )}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
+                          {/* Traffic Analysis */}
+                          <div>
+                            <h4 className="font-medium text-gray-900 mb-2">Traffic Overview</h4>
+                            <div className="space-y-2 text-sm">
+                              <p className="text-gray-600 text-xs">Total Visits: {competitor?.trafficAnalysis?.totalVisits || 'N/A'}</p>
+                              <p className="text-gray-600 text-xs">Unique Visitors: {competitor?.trafficAnalysis?.uniqueVisitors || 'N/A'}</p>
+                              <p className="text-gray-600 text-xs">Page Views: {competitor?.trafficAnalysis?.pageViews || 'N/A'}</p>
+                              <p className="text-gray-600 text-xs">Search Traffic: {competitor?.trafficAnalysis?.trafficSources?.search || 0}%</p>
+                            </div>
+                          </div>
+
+                          {/* Competitive Position */}
+                          <div>
+                            <h4 className="font-medium text-gray-900 mb-2">Market Position</h4>
+                            <div className="space-y-2 text-sm">
+                              <p className="text-gray-600 text-xs">Market Share: {competitor?.competitivePosition?.marketShare || 'N/A'}</p>
+                              <p className="text-gray-600 text-xs">Brand Strength: {competitor?.competitivePosition?.brandStrength || 'N/A'}</p>
+                              <p className="text-gray-600 text-xs">Innovation Score: {competitor?.competitivePosition?.innovationScore || 'N/A'}</p>
+                              <p className="text-gray-600 text-xs">Customer Engagement: {competitor?.competitivePosition?.customerEngagement || 'N/A'}</p>
+                            </div>
                           </div>
                         </div>
 
-                        {/* Product Analysis */}
-                        {competitor.product_analysis && (
+                        {/* Blog Topics Preview */}
+                        {competitor?.contentAnalysis?.blogTopics && competitor.contentAnalysis.blogTopics.length > 0 && (
                           <div className="mt-4">
-                            <h4 className="font-medium text-gray-900 mb-2">Product Analysis</h4>
-                            <div className="space-y-3">
-                              <div>
-                                <span className="text-sm font-medium text-gray-700">Target Audience:</span>
-                                <span className="text-sm text-gray-600 ml-2">{competitor.product_analysis.target_audience}</span>
-                              </div>
-                              {competitor.product_analysis.customer_satisfaction_score && (
-                                <div>
-                                  <span className="text-sm font-medium text-gray-700">Customer Satisfaction:</span>
-                                  <span className="text-sm text-gray-600 ml-2">{competitor.product_analysis.customer_satisfaction_score}/5</span>
-                                </div>
-                              )}
-                              {competitor.product_analysis.core_features && (
-                                <div>
-                                  <span className="text-sm font-medium text-gray-700">Core Features:</span>
-                                  <div className="flex flex-wrap gap-1 mt-1">
-                                    {competitor.product_analysis.core_features.map((feature, idx) => (
-                                      <Badge key={idx} variant="outline" className="text-xs">
-                                        {feature}
-                                      </Badge>
-                                    ))}
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Top Keywords */}
-                        <div className="mt-4">
-                          <h4 className="font-medium text-gray-900 mb-2">Top Keywords</h4>
-                          <div className="space-y-2">
-                            {competitor.marketing_strategy.top_keywords.map((keyword, idx) => (
-                              <div
-                                key={idx}
-                                className="flex items-center justify-between text-sm bg-gray-50 p-2 rounded"
-                              >
-                                <span>{keyword.keyword}</span>
-                                <div className="flex gap-2">
-                                  <Badge variant="outline">#{keyword.position}</Badge>
-                                  <Badge variant="secondary">{formatNumber(keyword.volume)} vol</Badge>
-                                  {keyword.difficulty && (
-                                    <Badge variant="outline" className="text-xs">{keyword.difficulty}</Badge>
-                                  )}
-                                  {keyword.cpc && (
-                                    <Badge variant="outline" className="text-xs">${keyword.cpc}</Badge>
-                                  )}
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-
-                        {/* Recent Developments */}
-                        {competitor.recent_developments && competitor.recent_developments.length > 0 && (
-                          <div className="mt-4">
-                            <h4 className="font-medium text-gray-900 mb-2">Recent Developments</h4>
+                            <h4 className="font-medium text-gray-900 mb-2">Recent Blog Topics</h4>
                             <div className="space-y-2">
-                              {competitor.recent_developments.map((dev, idx) => (
-                                <div key={idx} className="text-sm bg-gray-50 p-2 rounded">
-                                  <div className="flex justify-between items-start">
-                                    <span className="font-medium">{dev.event}</span>
-                                    <Badge variant={dev.impact === 'Positive' ? 'default' : 'secondary'} className="text-xs">
-                                      {dev.impact}
-                                    </Badge>
-                                  </div>
-                                  <div className="text-xs text-gray-500 mt-1">{dev.date}</div>
+                              {competitor.contentAnalysis.blogTopics.slice(0, 3).map((topic, i) => (
+                                <div key={i} className="text-sm text-gray-600 bg-gray-50 p-2 rounded">
+                                  <p className="font-medium">{topic.title}</p>
+                                  <p className="text-xs text-gray-500">{topic.excerpt}</p>
                                 </div>
                               ))}
                             </div>
                           </div>
                         )}
                       </div>
-                    ))}
-                  </CardContent>
-                </Card>
-
-                {/* Competitive Gaps */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Target className="w-5 h-5 text-green-500" />
-                      Competitive Gaps & Opportunities ({result.competitive_gaps.length})
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    {result.competitive_gaps.map((gap, index) => (
-                      <div key={index} className="border rounded-lg p-4">
-                        <div className="flex items-start justify-between mb-2">
-                          <h4 className="font-medium text-gray-900">{gap.opportunity}</h4>
-                          <div className="flex gap-2">
-                            <Badge className={getDifficultyColor(gap.difficulty)}>{gap.difficulty} difficulty</Badge>
-                            <Badge className={getImpactColor(gap.impact)}>{gap.impact} impact</Badge>
-                          </div>
-                        </div>
-                        <Badge variant="outline" className="mb-3">{gap.category}</Badge>
-                        
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-                          {gap.market_demand && (
-                            <div>
-                              <span className="font-medium text-gray-700">Market Demand:</span>
-                              <span className="text-gray-600 ml-2">{gap.market_demand}</span>
-                            </div>
-                          )}
-                          {gap.implementation_cost && (
-                            <div>
-                              <span className="font-medium text-gray-700">Implementation Cost:</span>
-                              <span className="text-gray-600 ml-2">{gap.implementation_cost}</span>
-                            </div>
-                          )}
-                          {gap.timeline && (
-                            <div>
-                              <span className="font-medium text-gray-700">Timeline:</span>
-                              <span className="text-gray-600 ml-2">{gap.timeline}</span>
-                            </div>
-                          )}
-                          {gap.competitive_advantage && (
-                            <div>
-                              <span className="font-medium text-gray-700">Competitive Advantage:</span>
-                              <span className="text-gray-600 ml-2">{gap.competitive_advantage}</span>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </CardContent>
-                </Card>
-
-                {/* Benchmarking */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <BarChart3 className="w-5 h-5 text-blue-500" />
-                      Competitive Benchmarking
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="mb-4 p-3 bg-blue-50 rounded-lg">
-                      <h4 className="font-medium text-blue-900">Your Position:</h4>
-                      <p className="text-sm text-blue-800">{result.benchmarking.your_position}</p>
-                      {result.benchmarking.positioning_statement && (
-                        <p className="text-sm text-blue-700 mt-2 italic">"{result.benchmarking.positioning_statement}"</p>
-                      )}
-                    </div>
-
-                    <div className="space-y-4">
-                      {result.benchmarking.key_metrics_comparison.map((metric, index) => (
-                        <div key={index} className="border rounded-lg p-4">
-                          <h4 className="font-medium text-gray-900 mb-3">{metric.metric}</h4>
-                          <div className="grid grid-cols-3 gap-4 mb-3">
-                            <div className="text-center">
-                              <div
-                                className={`text-lg font-bold ${getComparisonColor(metric.your_score, metric.competitor_avg)}`}
-                              >
-                                {formatNumber(metric.your_score)}
-                              </div>
-                              <div className="text-xs text-gray-600">Your Score</div>
-                            </div>
-                            <div className="text-center">
-                              <div className="text-lg font-bold text-gray-600">
-                                {formatNumber(metric.competitor_avg)}
-                              </div>
-                              <div className="text-xs text-gray-600">Competitor Avg</div>
-                            </div>
-                            <div className="text-center">
-                              <div className="text-lg font-bold text-gray-600">{formatNumber(metric.industry_avg)}</div>
-                              <div className="text-xs text-gray-600">Industry Avg</div>
-                            </div>
-                          </div>
-                          
-                          {metric.target && (
-                            <div className="text-center p-2 bg-green-50 rounded mb-3">
-                              <div className="text-sm font-medium text-green-600">Target: {formatNumber(metric.target)}</div>
-                            </div>
-                          )}
-                          
-                          {metric.gap_analysis && (
-                            <div className="text-sm text-gray-600 bg-gray-50 p-2 rounded">
-                              <span className="font-medium">Gap Analysis:</span> {metric.gap_analysis}
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                      
-                      {result.benchmarking.competitive_advantage_matrix && (
-                        <div className="mt-6">
-                          <h4 className="font-medium text-gray-900 mb-3">Competitive Advantage Matrix</h4>
-                          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-                            {Object.entries(result.benchmarking.competitive_advantage_matrix).map(([key, value]) => (
-                              <div key={key} className="text-center p-3 border rounded-lg">
-                                <div className="text-sm font-medium text-gray-700 capitalize mb-1">{key.replace('_', ' ')}</div>
-                                <Badge 
-                                  className={
-                                    value === 'Advantage' ? 'bg-green-100 text-green-800' :
-                                    value === 'Disadvantage' ? 'bg-red-100 text-red-800' :
-                                    'bg-gray-100 text-gray-800'
-                                  }
-                                >
-                                  {value}
-                                </Badge>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </div>
+                    )) || []}
                   </CardContent>
                 </Card>
 
@@ -1133,254 +808,122 @@ export default function CompetitorAnalysisPage() {
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
-                      <TrendingUp className="w-5 h-5 text-orange-500" />
-                      Strategic Recommendations ({result.recommendations.length})
+                      <Lightbulb className="w-5 h-5 text-yellow-500" />
+                      Strategic Recommendations ({result?.aiAnalysis?.strategicRecommendations?.length || 0})
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    {result.recommendations.map((rec, index) => (
-                      <div key={index} className="border rounded-lg p-4">
-                        <div className="flex items-start justify-between mb-2">
-                          <h4 className="font-medium text-gray-900">{rec.action}</h4>
-                          <div className="flex gap-2">
-                            <Badge className={getPriorityColor(rec.priority)}>{rec.priority} priority</Badge>
-                            <Badge variant="outline">{rec.timeline}</Badge>
+                    {result?.aiAnalysis?.strategicRecommendations?.map((recommendation, index) => (
+                      <div key={index} className="border rounded-lg p-4 bg-blue-50">
+                        <div className="space-y-3">
+                          <div className="flex items-start gap-3">
+                            <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
+                            <div className="flex-1">
+                              <h4 className="font-medium text-blue-700 mb-1">{recommendation.recommendation}</h4>
+                              <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-xs text-gray-600">
+                                <div>
+                                  <span className="font-medium">Impact:</span> {recommendation.impact}
+                                </div>
+                                <div>
+                                  <span className="font-medium">Effort:</span> {recommendation.effort}
+                                </div>
+                                <div>
+                                  <span className="font-medium">Timeline:</span> {recommendation.timeline}
+                                </div>
+                              </div>
+                            </div>
                           </div>
                         </div>
-                        <Badge variant="secondary" className="mb-2">
-                          {rec.category}
-                        </Badge>
-                        <p className="text-sm text-gray-600 mb-3">{rec.rationale}</p>
-                        
-                        {rec.estimated_cost && (
-                          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-3">
-                            <div className="text-xs">
-                              <span className="font-medium">Cost:</span> {rec.estimated_cost}
-                            </div>
-                            {rec.expected_roi && (
-                              <div className="text-xs">
-                                <span className="font-medium">ROI:</span> {rec.expected_roi}
-                              </div>
-                            )}
-                          </div>
-                        )}
-                        
-                        {rec.success_metrics && rec.success_metrics.length > 0 && (
-                          <div className="mb-3">
-                            <p className="text-xs font-medium text-gray-700 mb-1">Success Metrics:</p>
-                            <div className="flex flex-wrap gap-1">
-                              {rec.success_metrics.map((metric, idx) => (
-                                <Badge key={idx} variant="outline" className="text-xs">
-                                  {metric}
-                                </Badge>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                        
-                        {rec.implementation_steps && rec.implementation_steps.length > 0 && (
-                          <div>
-                            <p className="text-xs font-medium text-gray-700 mb-1">Implementation Steps:</p>
-                            <ol className="text-xs text-gray-600 space-y-1">
-                              {rec.implementation_steps.map((step, idx) => (
-                                <li key={idx} className="flex items-start gap-2">
-                                  <span className="font-medium text-gray-500">{idx + 1}.</span>
-                                  <span>{step}</span>
-                                </li>
-                              ))}
-                            </ol>
-                          </div>
-                        )}
                       </div>
-                    ))}
+                    )) || []}
                   </CardContent>
                 </Card>
 
-                {/* Strategic Insights */}
-                {result.strategic_insights && (
+                {/* Market Gaps */}
                   <Card>
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2">
-                        <Target className="w-5 h-5 text-purple-500" />
-                        Strategic Insights
+                      <Target className="w-5 h-5 text-green-500" />
+                      Market Gaps & Opportunities ({result?.aiAnalysis?.marketGaps?.length || 0})
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <h4 className="font-medium text-gray-900">Market Entry Timing</h4>
-                          <p className="text-sm text-gray-600">{result.strategic_insights.market_entry_timing}</p>
+                    {result?.aiAnalysis?.marketGaps?.map((gap, index) => (
+                      <div key={index} className="border rounded-lg p-4 bg-green-50">
+                        <div className="flex items-start gap-3">
+                          <div className="w-2 h-2 bg-green-500 rounded-full mt-2 flex-shrink-0"></div>
+                          <p className="text-sm text-gray-700">{gap}</p>
                         </div>
-                        <div className="space-y-2">
-                          <h4 className="font-medium text-gray-900">Competitive Response Likelihood</h4>
-                          <p className="text-sm text-gray-600">{result.strategic_insights.competitive_response_likelihood}</p>
                         </div>
-                      </div>
-                      
-                      <div>
-                        <h4 className="font-medium text-gray-900 mb-2">Differentiation Opportunities</h4>
-                        <div className="space-y-1">
-                          {result.strategic_insights.differentiation_opportunities?.map((opportunity, index) => (
-                            <div key={index} className="text-sm text-gray-600 flex items-center gap-2">
-                              <Star className="w-4 h-4 text-yellow-500" />
-                              {opportunity}
+                    )) || []}
+                    </CardContent>
+                  </Card>
+
+                {/* Competitive Advantages */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                      <Zap className="w-5 h-5 text-purple-500" />
+                      Competitive Advantages
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      {result?.aiAnalysis?.competitiveAdvantages?.priceAdvantage && (
+                        <div className="border rounded-lg p-4 bg-purple-50">
+                          <div className="flex items-start gap-3">
+                            <div className="w-2 h-2 bg-purple-500 rounded-full mt-2 flex-shrink-0"></div>
+                            <div>
+                              <h4 className="font-medium text-purple-700 mb-1">Price Advantage</h4>
+                              <p className="text-sm text-gray-700">{result.aiAnalysis.competitiveAdvantages.priceAdvantage}</p>
                             </div>
-                          ))}
+                          </div>
                         </div>
-                      </div>
-                      
-                      {result.strategic_insights.partnership_opportunities && (
-                        <div>
-                          <h4 className="font-medium text-gray-900 mb-2">Partnership Opportunities</h4>
-                          <div className="space-y-2">
-                            {result.strategic_insights.partnership_opportunities.map((partner, index) => (
-                              <div key={index} className="border rounded p-3">
-                                <div className="flex justify-between items-start mb-1">
-                                  <span className="font-medium text-sm">{partner.partner}</span>
-                                  <Badge variant="outline" className="text-xs">
-                                    {partner.potential_impact} Impact
-                                  </Badge>
-                                </div>
-                                <p className="text-xs text-gray-600">{partner.rationale}</p>
-                              </div>
-                            ))}
+                      )}
+                      {result?.aiAnalysis?.competitiveAdvantages?.qualityAdvantage && (
+                        <div className="border rounded-lg p-4 bg-purple-50">
+                          <div className="flex items-start gap-3">
+                            <div className="w-2 h-2 bg-purple-500 rounded-full mt-2 flex-shrink-0"></div>
+                            <div>
+                              <h4 className="font-medium text-purple-700 mb-1">Quality Advantage</h4>
+                              <p className="text-sm text-gray-700">{result.aiAnalysis.competitiveAdvantages.qualityAdvantage}</p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                      {result?.aiAnalysis?.competitiveAdvantages?.serviceAdvantage && (
+                        <div className="border rounded-lg p-4 bg-purple-50">
+                          <div className="flex items-start gap-3">
+                            <div className="w-2 h-2 bg-purple-500 rounded-full mt-2 flex-shrink-0"></div>
+                            <div>
+                              <h4 className="font-medium text-purple-700 mb-1">Service Advantage</h4>
+                              <p className="text-sm text-gray-700">{result.aiAnalysis.competitiveAdvantages.serviceAdvantage}</p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                      {result?.aiAnalysis?.competitiveAdvantages?.innovationAdvantage && (
+                        <div className="border rounded-lg p-4 bg-purple-50">
+                          <div className="flex items-start gap-3">
+                            <div className="w-2 h-2 bg-purple-500 rounded-full mt-2 flex-shrink-0"></div>
+                            <div>
+                              <h4 className="font-medium text-purple-700 mb-1">Innovation Advantage</h4>
+                              <p className="text-sm text-gray-700">{result.aiAnalysis.competitiveAdvantages.innovationAdvantage}</p>
+                            </div>
                           </div>
                         </div>
                       )}
                     </CardContent>
                   </Card>
-                )}
 
-                {/* Risk Assessment */}
-                {result.risk_assessment && (
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        <AlertTriangle className="w-5 h-5 text-red-500" />
-                        Risk Assessment
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      {result.risk_assessment.high_risks && result.risk_assessment.high_risks.length > 0 && (
-                        <div>
-                          <h4 className="font-medium text-red-700 mb-2">High Risks</h4>
-                          <div className="space-y-2">
-                            {result.risk_assessment.high_risks.map((risk, index) => (
-                              <div key={index} className="border border-red-200 rounded p-3 bg-red-50">
-                                <div className="flex justify-between items-start mb-2">
-                                  <span className="font-medium text-sm text-red-900">{risk.risk}</span>
-                                  <div className="flex gap-2">
-                                    <Badge className="bg-red-100 text-red-800 text-xs">
-                                      {risk.probability} Probability
-                                    </Badge>
-                                    <Badge className="bg-red-100 text-red-800 text-xs">
-                                      {risk.impact} Impact
-                                    </Badge>
-                                  </div>
-                                </div>
-                                <p className="text-xs text-red-700">
-                                  <span className="font-medium">Mitigation:</span> {risk.mitigation}
-                                </p>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                      
-                      {result.risk_assessment.medium_risks && result.risk_assessment.medium_risks.length > 0 && (
-                        <div>
-                          <h4 className="font-medium text-yellow-700 mb-2">Medium Risks</h4>
-                          <div className="space-y-2">
-                            {result.risk_assessment.medium_risks.map((risk, index) => (
-                              <div key={index} className="border border-yellow-200 rounded p-3 bg-yellow-50">
-                                <div className="flex justify-between items-start mb-2">
-                                  <span className="font-medium text-sm text-yellow-900">{risk.risk}</span>
-                                  <div className="flex gap-2">
-                                    <Badge className="bg-yellow-100 text-yellow-800 text-xs">
-                                      {risk.probability} Probability
-                                    </Badge>
-                                    <Badge className="bg-yellow-100 text-yellow-800 text-xs">
-                                      {risk.impact} Impact
-                                    </Badge>
-                                  </div>
-                                </div>
-                                <p className="text-xs text-yellow-700">
-                                  <span className="font-medium">Mitigation:</span> {risk.mitigation}
-                                </p>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                )}
 
-                {/* Action Plan */}
-                {result.action_plan && (
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        <CheckCircle className="w-5 h-5 text-green-500" />
-                        Action Plan
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      {result.action_plan.immediate_actions && result.action_plan.immediate_actions.length > 0 && (
-                        <div>
-                          <h4 className="font-medium text-gray-900 mb-2">Immediate Actions (Next 1-3 Months)</h4>
-                          <div className="space-y-2">
-                            {result.action_plan.immediate_actions.map((action, index) => (
-                              <div key={index} className="border rounded p-3">
-                                <div className="flex justify-between items-start mb-1">
-                                  <span className="font-medium text-sm">{action.action}</span>
-                                  <Badge variant="outline" className="text-xs">
-                                    {action.timeline}
-                                  </Badge>
-                                </div>
-                                <p className="text-xs text-gray-600">
-                                  <span className="font-medium">Resources:</span> {action.resources_needed}
-                                </p>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                      
-                      {result.action_plan.short_term_goals && result.action_plan.short_term_goals.length > 0 && (
-                        <div>
-                          <h4 className="font-medium text-gray-900 mb-2">Short-term Goals (3-12 Months)</h4>
-                          <div className="space-y-2">
-                            {result.action_plan.short_term_goals.map((goal, index) => (
-                              <div key={index} className="border rounded p-3">
-                                <div className="flex justify-between items-start mb-2">
-                                  <span className="font-medium text-sm">{goal.goal}</span>
-                                  <Badge variant="outline" className="text-xs">
-                                    {goal.timeline}
-                                  </Badge>
-                                </div>
-                                <div className="flex flex-wrap gap-1">
-                                  {goal.success_metrics.map((metric, idx) => (
-                                    <Badge key={idx} variant="secondary" className="text-xs">
-                                      {metric}
-                                    </Badge>
-                                  ))}
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                      
-                      {result.action_plan.long_term_vision && (
-                        <div className="p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg">
-                          <h4 className="font-medium text-gray-900 mb-2">Long-term Vision</h4>
-                          <p className="text-sm text-gray-700 italic">"{result.action_plan.long_term_vision}"</p>
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                )}
+
+
+
+
+
+
+
+
 
                 {/* Action Buttons */}
                 <div className="flex gap-4">
@@ -1395,6 +938,10 @@ export default function CompetitorAnalysisPage() {
                   <Button variant="outline" onClick={handleDownloadPDF}>
                     <Download className="w-4 h-4 mr-2" />
                     Download PDF
+                  </Button>
+                  <Button variant="outline" onClick={handleExportToNotion}>
+                    <FileText className="w-4 h-4 mr-2" />
+                    Export to Notion
                   </Button>
                 </div>
               </div>

@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Header } from "@/components/header"
 import Link from "next/link"
-import { ArrowLeft, Play, Download, Copy, CheckCircle, Loader2, MapPin, Lock, Crown, Star, TrendingUp, Search, Users } from 'lucide-react'
+import { ArrowLeft, Play, Download, Copy, CheckCircle, Loader2, MapPin, Lock, Crown, Star, TrendingUp, Search, Users, Settings, Calendar } from 'lucide-react'
 import { useUserStore } from "@/lib/user-store"
 import jsPDF from "jspdf";
 import { makeAuthenticatedRequest } from "@/lib/auth-utils"
@@ -93,6 +93,7 @@ export default function LocalSEOPage() {
     targetKeywords: "",
     currentWebsite: "",
     competitors: "",
+    gmbEmail: "",
   })
   const [isGenerating, setIsGenerating] = useState(false)
   const [result, setResult] = useState<LocalSEOResult | null>(null)
@@ -418,6 +419,214 @@ export default function LocalSEOPage() {
     }
   }
 
+  // GMB Profile Audit
+  const handleGMBAudit = async () => {
+    if (!hasAccess) {
+      alert("Please upgrade to Pro or Agency plan to use this tool.")
+      return
+    }
+
+    if (!formData.businessName || !formData.location) {
+      alert("Please enter business name and location")
+      return
+    }
+
+    try {
+      const data = await makeAuthenticatedRequest('/api/ai-tools/local-seo/gmb-audit', {
+        method: 'POST',
+        body: JSON.stringify({
+          businessName: formData.businessName,
+          location: formData.location
+        })
+      })
+
+      if (data.success) {
+        alert(`GMB Audit completed! Profile Score: ${data.audit.completenessScore}/100`);
+        // You can store this data in state for display
+      } else {
+        alert('GMB audit failed. Please try again.');
+      }
+    } catch (error) {
+      console.error('GMB audit error:', error);
+      alert('GMB audit failed. Please check your GMB integration settings.');
+    }
+  }
+
+  // Citation Building
+  const handleBuildCitations = async () => {
+    if (!hasAccess) {
+      alert("Please upgrade to Pro or Agency plan to use this tool.")
+      return
+    }
+
+    try {
+      const businessData = {
+        businessName: formData.businessName,
+        location: formData.location,
+        city: formData.location.split(',')[0]?.trim(),
+        state: formData.location.split(',')[1]?.trim(),
+        businessType: formData.businessType,
+        website: formData.currentWebsite
+      }
+
+      const data = await makeAuthenticatedRequest('/api/ai-tools/local-seo/build-citations', {
+        method: 'POST',
+        body: JSON.stringify({
+          businessData: businessData,
+          method: 'manual' // or 'brightlocal' if API key is configured
+        })
+      })
+
+      if (data.success) {
+        alert(`Citation building initiated! ${data.result.totalSubmitted} directories processed.`);
+      } else {
+        alert('Citation building failed. Please try again.');
+      }
+    } catch (error) {
+      console.error('Citation building error:', error);
+      alert('Citation building failed. Please try again.');
+    }
+  }
+
+  // Performance Tracking
+  const handleTrackPerformance = async () => {
+    if (!hasAccess) {
+      alert("Please upgrade to Pro or Agency plan to use this tool.")
+      return
+    }
+
+    if (!formData.targetKeywords) {
+      alert("Please enter target keywords first")
+      return
+    }
+
+    try {
+      const keywords = formData.targetKeywords.split(',').map(k => k.trim());
+      const competitors = formData.competitors ? formData.competitors.split(',').map(c => ({ name: c.trim() })) : [];
+
+      const data = await makeAuthenticatedRequest('/api/ai-tools/local-seo/performance-report', {
+        method: 'POST',
+        body: JSON.stringify({
+          businessName: formData.businessName,
+          location: formData.location,
+          keywords: keywords,
+          competitors: competitors
+        })
+      })
+
+      if (data.success) {
+        alert(`Performance report generated! Overall Score: ${data.report.summary.overallScore}/100`);
+        // You can store this data in state for display
+      } else {
+        alert('Performance tracking failed. Please try again.');
+      }
+    } catch (error) {
+      console.error('Performance tracking error:', error);
+      alert('Performance tracking failed. Please try again.');
+    }
+  }
+
+  // Content Calendar Generation
+  const handleGenerateContentCalendar = async () => {
+    if (!hasAccess) {
+      alert("Please upgrade to Pro or Agency plan to use this tool.")
+      return
+    }
+
+    try {
+      const data = await makeAuthenticatedRequest('/api/ai-tools/local-seo/content-calendar', {
+        method: 'POST',
+        body: JSON.stringify({
+          businessName: formData.businessName,
+          businessType: formData.businessType,
+          location: formData.location,
+          primaryServices: formData.primaryServices
+        })
+      })
+
+      if (data.success) {
+        alert(`Content calendar generated! ${data.calendar.monthlyThemes.length} monthly themes created with ${data.calendar.totalPosts} posts.`);
+        // You can store this data in state for display
+      } else {
+        alert('Content calendar generation failed. Please try again.');
+      }
+    } catch (error) {
+      console.error('Content calendar generation error:', error);
+      alert('Content calendar generation failed. Please try again.');
+    }
+  }
+
+  // Competitor Monitoring
+  const handleCompetitorMonitoring = async () => {
+    if (!hasAccess) {
+      alert("Please upgrade to Pro or Agency plan to use this tool.")
+      return
+    }
+
+    if (!formData.competitors) {
+      alert("Please enter competitor names first")
+      return
+    }
+
+    try {
+      const competitors = formData.competitors.split(',').map(c => c.trim());
+
+      const data = await makeAuthenticatedRequest('/api/ai-tools/local-seo/competitor-tracking', {
+        method: 'POST',
+        body: JSON.stringify({
+          businessName: formData.businessName,
+          location: formData.location,
+          competitors: competitors
+        })
+      })
+
+      if (data.success) {
+        alert(`Competitor monitoring initiated! Tracking ${data.tracking.competitors.length} competitors with ${data.tracking.metrics.length} performance metrics.`);
+        // You can store this data in state for display
+      } else {
+        alert('Competitor monitoring failed. Please try again.');
+      }
+    } catch (error) {
+      console.error('Competitor monitoring error:', error);
+      alert('Competitor monitoring failed. Please try again.');
+    }
+  }
+
+  // GMB Calendar Management
+  const handleGMBCalendar = async () => {
+    if (!hasAccess) {
+      alert("Please upgrade to Pro or Agency plan to use this tool.")
+      return
+    }
+
+    if (!formData.gmbEmail) {
+      alert("Please enter your GMB email first")
+      return
+    }
+
+    try {
+      const data = await makeAuthenticatedRequest('/api/ai-tools/local-seo/gmb-calendar', {
+        method: 'POST',
+        body: JSON.stringify({
+          businessName: formData.businessName,
+          location: formData.location,
+          gmbEmail: formData.gmbEmail,
+          businessType: formData.businessType
+        })
+      })
+
+      if (data.success) {
+        alert(`GMB calendar created! ${data.calendar.events.length} events scheduled with ${data.calendar.posts.length} posts planned.`);
+        // You can store this data in state for display
+      } else {
+        alert('GMB calendar creation failed. Please try again.');
+      }
+    } catch (error) {
+      console.error('GMB calendar creation error:', error);
+      alert('GMB calendar creation failed. Please try again.');
+    }
+  }
+
   const copyToClipboard = (text: string, id: string) => {
     navigator.clipboard.writeText(text)
     setCopied((prev) => ({ ...prev, [id]: true }))
@@ -680,6 +889,37 @@ export default function LocalSEOPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Input Form */}
           <div className="lg:col-span-1">
+            {/* GMB Integration Card */}
+            <Card className="mb-6">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <MapPin className="w-5 h-5 text-blue-500" />
+                  Google My Business Integration
+                </CardTitle>
+                <CardDescription>Connect and audit your GMB profile</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="gmbEmail">GMB Email</Label>
+                  <Input
+                    id="gmbEmail"
+                    placeholder="your@business.com"
+                    value={formData.gmbEmail || ''}
+                    onChange={(e) => handleInputChange("gmbEmail", e.target.value)}
+                    disabled={!hasAccess}
+                  />
+                </div>
+                <Button
+                  variant="outline"
+                  onClick={handleGMBAudit}
+                  disabled={!hasAccess || !formData.businessName || !formData.location}
+                  className="w-full"
+                >
+                  <Search className="w-4 h-4 mr-2" />
+                  Audit GMB Profile
+                </Button>
+              </CardContent>
+            </Card>
             <Card>
               <CardHeader>
                 <CardTitle>Business Setup</CardTitle>
@@ -1309,6 +1549,67 @@ export default function LocalSEOPage() {
                       <Download className="w-4 h-4 mr-2" />
                     )}
                     {isExportingPDF ? "Exporting..." : "Export SEO Plan"}
+                  </Button>
+                </div>
+
+                {/* Local SEO Action Buttons */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
+                  <Button
+                    variant="outline"
+                    onClick={handleBuildCitations}
+                    className="w-full bg-blue-50 hover:bg-blue-100 border-blue-200"
+                    disabled={!result}
+                  >
+                    <MapPin className="w-4 h-4 mr-2" />
+                    Build Citations
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={handleTrackPerformance}
+                    className="w-full bg-green-50 hover:bg-green-100 border-green-200"
+                    disabled={!result}
+                  >
+                    <TrendingUp className="w-4 h-4 mr-2" />
+                    Track Performance
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => window.open('/api/ai-tools/local-seo/integrations', '_blank')}
+                    className="w-full bg-purple-50 hover:bg-purple-100 border-purple-200"
+                  >
+                    <Settings className="w-4 h-4 mr-2" />
+                    Check Integrations
+                  </Button>
+                </div>
+
+                {/* Advanced Local SEO Features */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
+                  <Button
+                    variant="outline"
+                    onClick={handleGenerateContentCalendar}
+                    className="w-full bg-orange-50 hover:bg-orange-100 border-orange-200"
+                    disabled={!result}
+                  >
+                    <Calendar className="w-4 h-4 mr-2" />
+                    Content Calendar
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={handleCompetitorMonitoring}
+                    className="w-full bg-red-50 hover:bg-red-100 border-red-200"
+                    disabled={!result}
+                  >
+                    <Users className="w-4 h-4 mr-2" />
+                    Competitor Monitor
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={handleGMBCalendar}
+                    className="w-full bg-indigo-50 hover:bg-indigo-100 border-indigo-200"
+                    disabled={!result}
+                  >
+                    <MapPin className="w-4 h-4 mr-2" />
+                    GMB Calendar
                   </Button>
                 </div>
               </div>
