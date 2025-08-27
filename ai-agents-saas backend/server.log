@@ -1,0 +1,33 @@
+🚀 Server running on port 5000
+📱 Environment: development
+✅ MongoDB Connected
+Generating content for tool: reels-scripts
+Input: {
+  topic: 'productivity tips',
+  niche: 'lifestyle',
+  targetAudience: 'young professionals',
+  contentType: 'tips-hacks',
+  duration: '30s',
+  goal: 'education',
+  tone: 'energetic'
+}
+generateReelsScript called with input: {
+  topic: 'productivity tips',
+  niche: 'lifestyle',
+  targetAudience: 'young professionals',
+  contentType: 'tips-hacks',
+  duration: '30s',
+  goal: 'education',
+  tone: 'energetic'
+}
+Processed input variables: {
+  topic: 'productivity tips',
+  niche: 'lifestyle',
+  targetAudience: 'young professionals',
+  contentType: 'tips-hacks',
+  duration: '30s',
+  goal: 'education',
+  tone: 'energetic'
+}
+Making OpenAI API call...
+OpenAI API Key exists: true
